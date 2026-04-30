@@ -2,7 +2,7 @@ name: Icehost Auto Renew
 on:
   workflow_dispatch:
   # schedule:
-  #   - cron: '42 22 30 4 *' # 下一个: 2026-04-30 22:42 UTC
+  #   - cron: '42 4 1 5 *' # 下一个: 2026-05-01 04:42 UTC
 
 jobs:
   run_renewal:
