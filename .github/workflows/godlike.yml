@@ -24,8 +24,10 @@ jobs:
           godlike_PROXY_NODE: ${{ secrets.godlike_PROXY_NODE }}
           godlike_PTERODACTYL_COOKIE: ${{ secrets.godlike_PTERODACTYL_COOKIE }}
           godlike_PTERODACTYL: ${{ secrets.godlike_PTERODACTYL }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: |
-          for value in "$REPO_TOKEN" "$godlike_PROXY_NODE" "$godlike_PTERODACTYL_COOKIE" "$godlike_PTERODACTYL"; do
+          for value in "$REPO_TOKEN" "$godlike_PROXY_NODE" "$godlike_PTERODACTYL_COOKIE" "$godlike_PTERODACTYL" "$BOT_TOKEN" "$TG_CHAT_ID"; do
             if [ -n "$value" ]; then
               echo "::add-mask::$value"
             fi
@@ -179,6 +181,8 @@ jobs:
         env:
           godlike_PTERODACTYL_COOKIE: ${{ secrets.godlike_PTERODACTYL_COOKIE }}
           godlike_PTERODACTYL: ${{ secrets.godlike_PTERODACTYL }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           PLAYWRIGHT_PROXY_SERVER: socks5://127.0.0.1:10808
         working-directory: private-scripts/scripts/godlike
         run: |
