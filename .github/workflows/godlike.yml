@@ -18,6 +18,48 @@ jobs:
           token: ${{ secrets.REPO_TOKEN }}
           path: private-scripts
 
+      - name: Mask sensitive values
+        env:
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+          godlike_PROXY_NODE: ${{ secrets.godlike_PROXY_NODE }}
+          godlike_PTERODACTYL_COOKIE: ${{ secrets.godlike_PTERODACTYL_COOKIE }}
+          godlike_PTERODACTYL: ${{ secrets.godlike_PTERODACTYL }}
+        run: |
+          for value in "$REPO_TOKEN" "$godlike_PROXY_NODE" "$godlike_PTERODACTYL_COOKIE" "$godlike_PTERODACTYL"; do
+            if [ -n "$value" ]; then
+              echo "::add-mask::$value"
+            fi
+          done
+
+          if [[ "$godlike_PTERODACTYL" == *"-----"* ]]; then
+            account="${godlike_PTERODACTYL%%-----*}"
+            password="${godlike_PTERODACTYL#*-----}"
+            [ -n "$account" ] && echo "::add-mask::$account"
+            [ -n "$password" ] && echo "::add-mask::$password"
+          fi
+
+          python - <<'PY'
+          import ast
+          import re
+          from pathlib import Path
+          from urllib.parse import urlparse
+
+          text = Path("private-scripts/scripts/godlike/main.py").read_text(encoding="utf-8", errors="ignore")
+          for name in ("SERVER_URL", "LOGIN_URL"):
+              match = re.search(rf"^{name}\s*=\s*(['\"])(.*?)\1", text, re.M)
+              if not match:
+                  continue
+              value = ast.literal_eval(match.group(1) + match.group(2) + match.group(1))
+              print(f"::add-mask::{value}")
+              parsed = urlparse(value)
+              if parsed.netloc:
+                  print(f"::add-mask::{parsed.netloc}")
+              if parsed.path:
+                  for part in parsed.path.strip("/").split("/"):
+                      if part:
+                          print(f"::add-mask::{part}")
+          PY
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -28,12 +70,177 @@ jobs:
           pip install playwright
           playwright install --with-deps chromium
 
+      - name: Install Xray
+        run: |
+          sudo bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+
+      - name: Configure proxy node
+        env:
+          godlike_PROXY_NODE: ${{ secrets.godlike_PROXY_NODE }}
+        run: |
+          python - <<'PY'
+          import base64
+          import json
+          import os
+          from pathlib import Path
+          from urllib.parse import parse_qs, unquote, urlparse
+
+          node = os.environ.get("godlike_PROXY_NODE", "").strip()
+          if not node:
+              raise SystemExit("godlike_PROXY_NODE is empty")
+
+          def stream_settings(network, security, host, path, sni):
+              settings = {"network": network or "tcp", "security": security or "none"}
+              if settings["security"] == "tls":
+                  settings["tlsSettings"] = {"serverName": sni or host or ""}
+              if settings["network"] == "ws":
+                  settings["wsSettings"] = {
+                      "path": path or "/",
+                      "headers": {"Host": host} if host else {},
+                  }
+              return settings
+
+          if node.startswith("vmess://"):
+              raw = node.removeprefix("vmess://")
+              raw += "=" * (-len(raw) % 4)
+              data = json.loads(base64.b64decode(raw).decode())
+              outbound = {
+                  "protocol": "vmess",
+                  "settings": {
+                      "vnext": [{
+                          "address": data["add"],
+                          "port": int(data["port"]),
+                          "users": [{
+                              "id": data["id"],
+                              "alterId": int(data.get("aid", 0)),
+                              "security": data.get("scy", "auto"),
+                          }],
+                      }]
+                  },
+                  "streamSettings": stream_settings(
+                      data.get("net"), data.get("tls"), data.get("host"), data.get("path"), data.get("sni")
+                  ),
+              }
+          elif node.startswith("vless://"):
+              parsed = urlparse(node)
+              query = {key: values[0] for key, values in parse_qs(parsed.query).items()}
+              user = {"id": parsed.username, "encryption": query.get("encryption", "none")}
+              if query.get("flow"):
+                  user["flow"] = query["flow"]
+              outbound = {
+                  "protocol": "vless",
+                  "settings": {
+                      "vnext": [{
+                          "address": parsed.hostname,
+                          "port": int(parsed.port or 443),
+                          "users": [user],
+                      }]
+                  },
+                  "streamSettings": stream_settings(
+                      query.get("type"), query.get("security"), query.get("host"), unquote(query.get("path", "/")), query.get("sni")
+                  ),
+              }
+          else:
+              raise SystemExit("godlike_PROXY_NODE must start with vmess:// or vless://")
+
+          config = {
+              "log": {"loglevel": "warning"},
+              "inbounds": [{
+                  "listen": "127.0.0.1",
+                  "port": 10808,
+                  "protocol": "socks",
+                  "settings": {"udp": True},
+              }],
+              "outbounds": [outbound],
+          }
+          Path("private-scripts/xray.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
+          PY
+
+      - name: Start proxy
+        run: |
+          xray run -config private-scripts/xray.json > private-scripts/xray.log 2>&1 &
+          sleep 3
+
+      - name: Enable Playwright proxy
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("private-scripts/scripts/godlike/main.py")
+          text = path.read_text(encoding="utf-8")
+          old = "p.chromium.launch(headless=True)"
+          new = "p.chromium.launch(headless=True, proxy={'server': os.environ.get('PLAYWRIGHT_PROXY_SERVER')} if os.environ.get('PLAYWRIGHT_PROXY_SERVER') else None)"
+          if old not in text:
+              raise SystemExit("Could not find Playwright launch call to patch")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+
       - name: Run Time Adder Script
         env:
           godlike_PTERODACTYL_COOKIE: ${{ secrets.godlike_PTERODACTYL_COOKIE }}
           godlike_PTERODACTYL: ${{ secrets.godlike_PTERODACTYL }}
+          PLAYWRIGHT_PROXY_SERVER: socks5://127.0.0.1:10808
         working-directory: private-scripts/scripts/godlike
-        run: python -u main.py
+        run: |
+          set +e
+          python -u main.py > godlike-run.log 2>&1
+          status=$?
+
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+          from urllib.parse import urlparse
+
+          log_path = Path("godlike-run.log")
+          text = log_path.read_text(encoding="utf-8", errors="replace") if log_path.exists() else ""
+
+          script_text = Path("main.py").read_text(encoding="utf-8", errors="ignore")
+          server_url = ""
+          login_url = ""
+          for name in ("SERVER_URL", "LOGIN_URL"):
+              match = re.search(rf"^{name}\s*=\s*(['\"])(.*?)\1", script_text, re.M)
+              if match and name == "SERVER_URL":
+                  server_url = match.group(2)
+              elif match and name == "LOGIN_URL":
+                  login_url = match.group(2)
+
+          server_host = urlparse(server_url).netloc if server_url else ""
+          login_host = urlparse(login_url).netloc if login_url else ""
+          server_id = ""
+          if server_url:
+              parts = [part for part in urlparse(server_url).path.split("/") if part]
+              if len(parts) >= 2 and parts[-2] == "server":
+                  server_id = parts[-1]
+
+          replacements = {
+              os.environ.get("godlike_PTERODACTYL_COOKIE", ""): "***COOKIE***",
+              os.environ.get("godlike_PTERODACTYL", ""): "***ACCOUNT***",
+              os.environ.get("PLAYWRIGHT_PROXY_SERVER", ""): "***PROXY***",
+              server_url: "https://***/server/***",
+              login_url: "https://***/auth/login",
+              server_host: "***.panel.godlike.host",
+              login_host: "***.panel.godlike.host",
+              server_id: "***SERVER_ID***",
+          }
+
+          account_bundle = os.environ.get("godlike_PTERODACTYL", "")
+          if "-----" in account_bundle:
+              account, password = account_bundle.split("-----", 1)
+              replacements[account] = "***ACCOUNT***"
+              replacements[password] = "***PASSWORD***"
+
+          for old, new in replacements.items():
+              if old:
+                  text = text.replace(old, new)
+
+          text = re.sub(r"/server/[A-Za-z0-9_-]+", "/server/***", text)
+          text = re.sub(r"remember_web_[A-Za-z0-9]+", "remember_web_***", text)
+          text = re.sub(r"pterodactyl_session=[^;\s]+", "pterodactyl_session=***", text)
+          print(text, end="")
+          PY
+
+          exit $status
 
       - name: Upload error artifacts
         if: failure()
