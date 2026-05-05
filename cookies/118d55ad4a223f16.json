@@ -1,6 +1,16 @@
 [
   {
     "domain": ".runox.io",
+    "expiry": 1778587028,
+    "httpOnly": true,
+    "name": "session",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": true,
+    "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbW51anhhaDUwNjZzbzExc20zMXM2a2trIiwiaWF0IjoxNzc3OTgyMjI4LCJleHAiOjE3Nzg1ODcwMjh9.rRtNWHdx6nmYBKVUrMeJTvSG-D-fOSS9Zo60J8OuYfE"
+  },
+  {
+    "domain": ".runox.io",
     "expiry": 1812542193,
     "httpOnly": false,
     "name": "_ga",
@@ -18,15 +28,5 @@
     "sameSite": "Lax",
     "secure": true,
     "value": "GS2.1.s1777982179$o1$g1$t1777982202$j51$l0$h0"
-  },
-  {
-    "domain": ".runox.io",
-    "expiry": 1778587028,
-    "httpOnly": true,
-    "name": "session",
-    "path": "/",
-    "sameSite": "Lax",
-    "secure": true,
-    "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbW51anhhaDUwNjZzbzExc20zMXM2a2trIiwiaWF0IjoxNzc3OTgyMjI4LCJleHAiOjE3Nzg1ODcwMjh9.rRtNWHdx6nmYBKVUrMeJTvSG-D-fOSS9Zo60J8OuYfE"
   }
 ]
