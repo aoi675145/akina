@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.REPO_TOKEN }}
 
       - name: 拉取私库脚本
         env:
@@ -249,6 +251,24 @@ jobs:
             [ -n "${password}" ] && echo "::add-mask::${password}"
           done
           xvfb-run -a python runox_auto.py
+
+      - name: 保存 Cookie
+        if: always()
+        run: |
+          git config user.name "Auto Bot"
+          git config user.email "bot@github.com"
+          git add cookies/*.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "✅ Cookie 没有变化，跳过提交。"
+          else
+            echo "🍪 检测到 Cookie 更新，正在推送到仓库..."
+            git commit -m "Update runox cookies [skip ci]"
+            git push || {
+              echo "远端有新提交，拉取后重试推送..."
+              git pull --rebase
+              git push
+            }
+          fi
 
       - name: 清理运行记录
         if: always()
