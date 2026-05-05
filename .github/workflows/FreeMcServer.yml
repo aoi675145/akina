@@ -26,12 +26,23 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: 安装依赖
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg dnsmasq xdotool unzip
-          pip install -q seleniumbase requests pyvirtualdisplay
+          if ! command -v xvfb-run >/dev/null || ! command -v unzip >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends xvfb unzip
+          fi
+          python -m pip install --disable-pip-version-check -q seleniumbase requests
+
+      - name: 安装 Xray
+        run: |
+          wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
+          mkdir -p xray-bin
+          unzip -oq Xray-linux-64.zip -d xray-bin
+          chmod +x xray-bin/xray
+          sudo mv xray-bin/xray /usr/local/bin/xray
 
       - name: 修复 DNS
         run: |
@@ -57,20 +68,9 @@ jobs:
           # 防止被覆盖
           sudo chattr +i /etc/resolv.conf 2>/dev/null || true
           
-          # 等 DNS 生效
-          sleep 3
-          
-          echo "🔍 DNS 测试:"
-          echo "--- freemcserver.net ---"
-          dig freemcserver.net +short @1.1.1.1 || echo "⚠️ 解析失败"
-          echo "--- panel.freemcserver.net ---"
-          dig panel.freemcserver.net +short @1.1.1.1 || echo "⚠️ 解析失败"
-          
-          echo ""
-          echo "📄 /etc/resolv.conf:"
-          cat /etc/resolv.conf
+          echo "✅ DNS 已配置"
 
-      - name: 安装并启动代理
+      - name: 构建 Xray 配置
         env:
           freemc_PROXY_NODE: ${{ secrets.freemc_PROXY_NODE }}
         run: |
@@ -78,11 +78,6 @@ jobs:
             echo "[ERROR] freemc_PROXY_NODE 未配置，禁止直连"
             exit 1
           fi
-
-          wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
-          mkdir -p xray-bin
-          unzip -oq Xray-linux-64.zip -d xray-bin
-          chmod +x xray-bin/xray
 
           python3 << 'PYEOF'
           import base64
@@ -230,9 +225,10 @@ jobs:
               json.dump(config, f, indent=2)
           PYEOF
 
-          ./xray-bin/xray run -c xray-config.json > xray.log 2>&1 &
-          sleep 2
-          ./xray-bin/xray version
+      - name: 启动代理
+        run: |
+          nohup xray run -c xray-config.json > xray.log 2>&1 &
+          sleep 3
 
           if curl -fsS --max-time 15 --proxy "http://127.0.0.1:8080" https://api.ipify.org >/tmp/freemc_proxy_ip; then
             python3 - <<'PYEOF'
@@ -253,30 +249,6 @@ jobs:
             exit 1
           fi
 
-      - name: 检查脚本代理出口
-        run: |
-          if [ -z "${PROXY_SERVER}" ]; then
-            echo "[ERROR] PROXY_SERVER 为空，禁止直连"
-            exit 1
-          fi
-
-          echo "[INFO] 检查代理出口 IP..."
-          curl -fsS --max-time 20 --proxy "${PROXY_SERVER}" https://api.ipify.org >/tmp/freemc_check_ip
-          python3 - <<'PYEOF'
-          ip = open("/tmp/freemc_check_ip", encoding="utf-8").read().strip()
-          parts = ip.split(".")
-          if len(parts) == 4:
-              ip = f"{parts[0]}.{parts[1]}.***.{parts[3]}"
-          elif len(ip) > 8:
-              ip = f"{ip[:4]}***{ip[-4:]}"
-          else:
-              ip = "***"
-          print(f"[INFO] 代理出口 IP: {ip}")
-          PYEOF
-
-          echo "[INFO] 检查代理访问 FreeMcServer..."
-          curl -fsSI --max-time 30 --proxy "${PROXY_SERVER}" https://panel.freemcserver.net/ | sed -n '1,8p'
-
       - name: 执行续订脚本
         env:
           FREEMCSERVER: ${{ secrets.FREEMCSERVER }}
@@ -284,7 +256,7 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           PROXY_SERVER: ${{ env.PROXY_SERVER }}
         run: |
-          python scripts/FreeMcServer/main.py
+          xvfb-run -a python scripts/FreeMcServer/main.py
 
 #      - name: 上传截图
 #        if: always()
