@@ -10,7 +10,7 @@ ffmpeg -version
 ---
 
 ```yaml
- wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
+        wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
         mkdir -p xray-bin
         unzip -oq Xray-linux-64.zip -d xray-bin
         chmod +x xray-bin/xray
