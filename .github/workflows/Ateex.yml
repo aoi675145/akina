@@ -229,23 +229,26 @@ jobs:
 
       - name: Check IP
         run: |
+          mask_ip() {
+            python -c 'import re,sys; print(re.sub(r"\b(\d{1,3})\.\d{1,3}\.\d{1,3}\.(\d{1,3})\b", r"\1.xxx.xxx.\2", sys.stdin.read()))'
+          }
           if [ ! -s xray-config.json ] || ! pgrep -x xray >/dev/null; then
             echo "[proxy] 使用直连"
             echo "Ateex_PROXY_STATUS=网络模式：直连 ⚠️" >> $GITHUB_ENV
-            curl -s https://api.ipify.org && echo
-            curl -s https://ipinfo.io
+            curl -s https://api.ipify.org | mask_ip && echo
+            curl -s https://ipinfo.io | mask_ip
             exit 0
           fi
           if curl -fsS --max-time 15 --proxy http://127.0.0.1:8080 https://api.ipify.org >/tmp/ateex_proxy_ip; then
-            echo "[proxy] 代理可用，出口 IP: $(cat /tmp/ateex_proxy_ip)"
+            echo "[proxy] 代理可用，出口 IP: $(cat /tmp/ateex_proxy_ip | mask_ip)"
             echo "Ateex_RUNTIME_PROXY=127.0.0.1:8080" >> $GITHUB_ENV
             echo "Ateex_PROXY_STATUS=网络模式：代理" >> $GITHUB_ENV
-            curl -s --proxy http://127.0.0.1:8080 https://ipinfo.io
+            curl -s --proxy http://127.0.0.1:8080 https://ipinfo.io | mask_ip
           else
             echo "[proxy] 代理不可用，回退直连"
             echo "Ateex_PROXY_STATUS=网络模式：直连 ⚠️" >> $GITHUB_ENV
-            curl -s https://api.ipify.org && echo
-            curl -s https://ipinfo.io
+            curl -s https://api.ipify.org | mask_ip && echo
+            curl -s https://ipinfo.io | mask_ip
           fi
 
       - name: Fetch private Ateex script
