@@ -78,16 +78,19 @@ jobs:
           curl -s --max-time 10 https://www.cloudflare.com/cdn-cgi/trace | grep -E 'ip=|warp=|loc=' || true
       - name: 执行自动续期脚本
         id: renew_run
-        continue-on-error: true
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           WORKFLOW_RETRY: ${{ github.event.inputs.retry }}
         run: |
           mkdir -p private-repo/scripts/godlike/screenshots
-          xvfb-run -a node private-repo/scripts/godlike/warp.js
+          set +e
+          timeout 24m xvfb-run -a node private-repo/scripts/godlike/warp.js
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
       - name: 续期失败后重开一次工作流
-        if: steps.renew_run.outcome == 'failure' && github.event.inputs.retry != 'true'
+        if: steps.renew_run.outputs.exit_code != '0' && github.event.inputs.retry != 'true'
         env:
           GH_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
@@ -97,7 +100,7 @@ jobs:
             -f retry=true
           exit 1
       - name: 重试后仍失败则停止
-        if: steps.renew_run.outcome == 'failure' && github.event.inputs.retry == 'true'
+        if: steps.renew_run.outputs.exit_code != '0' && github.event.inputs.retry == 'true'
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
