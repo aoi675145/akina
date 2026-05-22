@@ -2,11 +2,6 @@ name: Streamlit 自动唤醒
 
 on:
   workflow_dispatch:
-    inputs:
-      target_url:
-        description: '目标链接'
-        required: false
-        type: string
 
 permissions:
   contents: read
@@ -42,11 +37,10 @@ jobs:
           
       - name: 执行唤醒脚本
         env:
-          TARGET_URL: ${{ github.event.inputs.target_url || vars.TARGET_URL || vars.STREAMLIT_TARGET_URL }}
-          STREAMLIT_TARGET_URL: ${{ vars.STREAMLIT_TARGET_URL || vars.TARGET_URL }}
+          TARGET_URL: ${{ vars.STREAMLIT_TARGET_URL }}
         run: |
           if [ -z "$TARGET_URL" ]; then
-            echo "缺少 TARGET_URL：请在当前运行 workflow 的仓库 Variables 中配置 STREAMLIT_TARGET_URL，或手动运行时填写 target_url。"
+            echo "缺少 STREAMLIT_TARGET_URL：请在当前运行 workflow 的仓库 Variables 中配置 STREAMLIT_TARGET_URL。"
             exit 1
           fi
           echo "开始执行 Streamlit 应用唤醒任务..."
