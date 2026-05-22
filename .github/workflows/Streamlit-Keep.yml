@@ -6,7 +6,6 @@ on:
       target_url:
         description: '目标链接'
         required: false
-        default: 'https://history-wbxl0.streamlit.app'
         type: string
 
 permissions:
@@ -43,7 +42,7 @@ jobs:
           
       - name: 执行唤醒脚本
         env:
-          TARGET_URL: ${{ github.event.inputs.target_url || 'https://history-wbxl0.streamlit.app' }}
+          TARGET_URL: ${{ github.event.inputs.target_url || vars.STREAMLIT_TARGET_URL }}
         run: |
           echo "开始执行 Streamlit 应用唤醒任务..."
           python scripts/Streamlit/Keep.py
