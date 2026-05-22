@@ -37,10 +37,10 @@ jobs:
           
       - name: 执行唤醒脚本
         env:
-          TARGET_URL: ${{ vars.STREAMLIT_TARGET_URL }}
+          TARGET_URL: ${{ secrets.STREAMLIT_TARGET_URL }}
         run: |
           if [ -z "$TARGET_URL" ]; then
-            echo "缺少 STREAMLIT_TARGET_URL：请在当前运行 workflow 的仓库 Variables 中配置 STREAMLIT_TARGET_URL。"
+            echo "缺少 STREAMLIT_TARGET_URL：请在当前运行 workflow 的仓库 Secrets 中配置 STREAMLIT_TARGET_URL。"
             exit 1
           fi
           echo "开始执行 Streamlit 应用唤醒任务..."
