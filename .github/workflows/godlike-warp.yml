@@ -1,4 +1,4 @@
-name: godlike warp 续期
+name: godlike-warp.yml
 on:
   workflow_dispatch:
     inputs:
@@ -14,7 +14,7 @@ permissions:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - name: 检出当前仓库
         uses: actions/checkout@v4
@@ -94,7 +94,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
-          gh workflow run "${{ github.workflow }}" \
+          gh workflow run "godlike-warp.yml" \
             --repo "${{ github.repository }}" \
             --ref "${{ github.ref_name }}" \
             -f retry=true
@@ -113,7 +113,7 @@ jobs:
         if: always()
         uses: Mattraks/delete-workflow-runs@v2
         with:
-          token: ${{ secrets.REPO_TOKEN }}
+          token: ${{ github.token }}
           repository: ${{ github.repository }}
           delete_workflow_pattern: ${{ github.workflow }}
           retain_days: 0
