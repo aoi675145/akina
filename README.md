@@ -15,6 +15,7 @@ mkdir -p xray-bin
 unzip -oq Xray-linux-64.zip -d xray-bin
 chmod +x xray-bin/xray
 sudo mv xray-bin/xray /usr/local/bin/xray
+```
 
 ---
 
