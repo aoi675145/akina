@@ -15,3 +15,16 @@ mkdir -p xray-bin
 unzip -oq Xray-linux-64.zip -d xray-bin
 chmod +x xray-bin/xray
 sudo mv xray-bin/xray /usr/local/bin/xray
+
+---
+
+```yaml
+      - name: 清理运行记录
+        if: always()
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ secrets.REPO_TOKEN }}
+          repository: ${{ github.repository }}
+          delete_workflow_pattern: ${{ github.workflow }}
+          retain_days: 0
+          keep_minimum_runs: 6
