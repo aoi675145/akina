@@ -46,7 +46,7 @@ jobs:
           -H "Authorization: Bearer ${REPO_TOKEN}" \
           -H "Accept: application/vnd.github.raw" \
           -o bytenut.py \
-          "https://api.github.com/repos/akina005/scripts/contents/scripts/bytenut/bytenut.py?ref=main"
+          "https://api.github.com/repos/aoi675145/scripts/contents/scripts/bytenut/bytenut.py?ref=main"
 
     - name: Build Xray config
       id: build_xray
