@@ -13,7 +13,7 @@ jobs:
       - name: 检出私有脚本仓库
         uses: actions/checkout@v4
         with:
-          repository: akina005/scripts
+          repository: aoi675145/scripts
           token: ${{ secrets.REPO_TOKEN }}
           path: private-repo
       - name: 设置 Node 环境
@@ -32,7 +32,7 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.REPO_TOKEN }}" \
             -H "Accept: application/octet-stream" \
             -o /tmp/ffmpeg-release-amd64-static.tar.xz \
-            https://api.github.com/repos/akina005/akina/releases/assets/414344188
+            https://api.github.com/repos/aoi675145/akina/releases/assets/414344188
           tar -xf /tmp/ffmpeg-release-amd64-static.tar.xz -C /tmp
           sudo install -m 755 /tmp/ffmpeg-*-amd64-static/ffmpeg /usr/local/bin/ffmpeg
           sudo install -m 755 /tmp/ffmpeg-*-amd64-static/ffprobe /usr/local/bin/ffprobe
