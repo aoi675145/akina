@@ -25,7 +25,7 @@ jobs:
       - name: 拉取代码
         uses: actions/checkout@v4
         with:
-          repository: 'akina005/scripts'  
+          repository: 'aoi675145/scripts'  
           token: ${{ secrets.REPO_TOKEN }}
 
       - name: 配置 Python
@@ -37,7 +37,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y xz-utils
-          curl -L -o /tmp/ffmpeg.tar.xz https://github.com/akina005/akina/releases/download/ffmpeg/ffmpeg-release-amd64-static.tar.xz
+          curl -L -o /tmp/ffmpeg.tar.xz https://github.com/aoi675145/akina/releases/download/ffmpeg/ffmpeg-release-amd64-static.tar.xz
           mkdir -p /tmp/ffmpeg-static
           tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-static --strip-components=1
           sudo ln -sf /tmp/ffmpeg-static/ffmpeg /usr/local/bin/ffmpeg
