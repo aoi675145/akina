@@ -21,7 +21,7 @@ jobs:
       - name: 📥 拉取私有脚本仓库
         uses: actions/checkout@v4
         with:
-          repository: akina005/scripts
+          repository: aoi675145/scripts
           ref: main
           path: private-scripts
           token: ${{ secrets.REPO_TOKEN }}
