@@ -24,7 +24,7 @@ jobs:
         run: |
           curl -H "Authorization: Bearer $REPO_TOKEN" \
             -L -o renew.py \
-            "https://raw.githubusercontent.com/akina005/scripts/main/scripts/godlike/renew.py"
+            "https://raw.githubusercontent.com/aoi675145/scripts/main/scripts/godlike/renew.py"
           ls -la renew.py
 
       - name: 配置 Python 环境
