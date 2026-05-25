@@ -259,12 +259,12 @@ jobs:
             -H "Authorization: Bearer ${REPO_TOKEN}" \
             -H "Accept: application/vnd.github.raw" \
             -o main.py \
-            "https://api.github.com/repos/akina005/scripts/contents/scripts/Ateex/main.py?ref=main"
+            "https://api.github.com/repos/aoi675145/scripts/contents/scripts/Ateex/main.py?ref=main"
           curl -sL \
             -H "Authorization: Bearer ${REPO_TOKEN}" \
             -H "Accept: application/vnd.github.raw" \
             -o cookie.txt \
-            "https://api.github.com/repos/akina005/scripts/contents/scripts/Ateex/cookie.txt?ref=main" || true
+            "https://api.github.com/repos/aoi675145/scripts/contents/scripts/Ateex/cookie.txt?ref=main" || true
 
       - name: Run full flow
         env:
@@ -273,7 +273,7 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
-          Ateex_COOKIE_REPOSITORY: akina005/scripts
+          Ateex_COOKIE_REPOSITORY: aoi675145/scripts
           Ateex_COOKIE_REPO_PATH: scripts/Ateex/cookie.txt
         run: |
           mkdir -p screenshots
