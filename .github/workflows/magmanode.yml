@@ -378,7 +378,7 @@ jobs:
           curl -L \
             -H "Authorization: token ${REPO_TOKEN}" \
             -H "Accept: application/vnd.github.raw" \
-            https://api.github.com/repos/akina005/scripts/contents/scripts/magama/main.py \
+            https://api.github.com/repos/aoi675145/scripts/contents/scripts/magama/main.py \
             -o main.py
 
           # 使用 xvfb-run 分配虚拟屏幕，让 xdotool 能够正常点击
