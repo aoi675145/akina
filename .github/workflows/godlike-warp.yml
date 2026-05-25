@@ -72,7 +72,7 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           PYTHONUNBUFFERED: "1"
-        run: python renew.py
+        run: python -u renew.py
 
       - name: 上传截图
         if: always()
