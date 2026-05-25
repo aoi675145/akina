@@ -71,7 +71,10 @@ jobs:
           GODLIKE_ID_INPUT: ${{ github.event.inputs.accounts }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-        run: python renew.py
+          PYTHONUNBUFFERED: "1"
+        run: |
+          set -o pipefail
+          python renew.py 2>&1
 
       - name: 上传截图
         if: always()
