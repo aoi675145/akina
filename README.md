@@ -29,3 +29,10 @@ sudo mv xray-bin/xray /usr/local/bin/xray
           delete_workflow_pattern: ${{ github.workflow }}
           retain_days: 0
           keep_minimum_runs: 6
+```
+
+---
+
+```yaml
+import sys
+sys.stdout.reconfigure(line_buffering=True)
