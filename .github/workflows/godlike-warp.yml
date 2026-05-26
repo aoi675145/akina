@@ -43,7 +43,7 @@ jobs:
       - name: 安装 Python 依赖
         run: |
           python -m pip install --upgrade pip
-          pip install DrissionPage xvfbwrapper requests SpeechRecognition pydub
+          pip install DrissionPage xvfbwrapper requests SpeechRecognition pydub DataRecorder
 
       - name: 启用 WARP 网络
         uses: fscarmen/warp-on-actions@v1.3
