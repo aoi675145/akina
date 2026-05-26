@@ -17,12 +17,12 @@ jobs:
         repository: 'aoi675145/scripts'
         token: ${{ secrets.REPO_TOKEN }}
 
-    - name: 🟢 Setup Python
+    - name: 🟢 安装 Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
-    - name: 💾 Cache Cookies
+    - name: 💾 缓存 Cookies
       uses: actions/cache@v3
       with:
         path: /tmp/greathost_cookies.json
@@ -30,7 +30,7 @@ jobs:
         restore-keys: |
           greathost-cookies-
 
-    - name: 📦 Install dependencies
+    - name: 📦 安装依赖
       working-directory: scripts/greathost
       run: |
         # 兼容处理：如果有 requirements.txt 就用它，没有就直接装依赖
@@ -41,7 +41,7 @@ jobs:
         fi
         playwright install chromium
 
-    - name: 🌐 Install and Start Proxy
+    - name: 🌐 安装并启动代理
       env:
         GREATHOST_PROXY: ${{ secrets.GREATHOST_PROXY }}
       run: |
@@ -244,7 +244,7 @@ jobs:
         cat xray.log || true
         exit 0
 
-    - name: 🚀 Run Auto Renew
+    - name: 🚀 执行自动续期
       working-directory: scripts/greathost
       env:
         GREATHOST: ${{ secrets.GREATHOST }}
@@ -255,7 +255,7 @@ jobs:
       run: |
         python greathost.py
 
-    - name: 🧹 Clean Workflow Runs
+    - name: 🧹 清理历史工作流
       if: always()
       uses: Mattraks/delete-workflow-runs@v2
       with:
