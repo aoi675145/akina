@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  auto_renew_seedloaf:
+  auto_restart_seedloaf:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
