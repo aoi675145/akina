@@ -20,6 +20,7 @@ jobs:
           token: ${{ secrets.REPO_TOKEN }}
           sparse-checkout: |
             scripts/gm4/GM4F.py
+            scripts/gm4/GM4F.timestamp
           sparse-checkout-cone-mode: false
 
       - name: 配置 Python 环境
@@ -78,6 +79,19 @@ jobs:
             -e 's#\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b#***#g' \
             -e 's#bot[0-9]{6,}:[A-Za-z0-9_-]+#bot***#g' \
             -e 's#\b[0-9]{1,3}(\.[0-9]{1,3}){3}\b#***.***.***.***#g'
+
+      - name: 提交随机时间戳
+        if: always()
+        run: |
+          if git diff --quiet -- scripts/gm4/GM4F.timestamp; then
+            echo "[INFO] 随机时间戳未变化，跳过提交"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add scripts/gm4/GM4F.timestamp
+            git commit -m "Update GM4F timestamp"
+            git push
+          fi
 
       - name: 清理历史运行记录
         if: always()
