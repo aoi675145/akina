@@ -360,7 +360,7 @@ jobs:
           Seedloaf_PROXY_NODE: ${{ env.PROXY_SERVER }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-          COOKIE_FILE: scripts/seedloaf/cookie.txt
+          COOKIE_FILE: cookie.txt
         run: |
           cd scripts/seedloaf && python seedloaf.py
 
@@ -370,7 +370,7 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add scripts/seedloaf/cookie.txt
-          git diff --cached --quiet || git commit -m "chore: update seedloaf cookie"
+          git diff --cached --quiet || git commit -m "chore: update seedloaf cookie [skip ci]"
           git push
 
       - name: 🧹 清理旧的运行记录
