@@ -360,6 +360,7 @@ jobs:
           Seedloaf_PROXY_NODE: ${{ env.PROXY_SERVER }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          SEEDLOAF: ${{ secrets.SEEDLOAF }}
           COOKIE_FILE: cookie.txt
         run: |
           cd scripts/seedloaf && python seedloaf.py
