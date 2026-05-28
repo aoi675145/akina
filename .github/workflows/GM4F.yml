@@ -2,7 +2,7 @@ name: GM4F 续期
 
 on:
   schedule:
-    - cron: '10 0 30 5 *'
+    - cron: '17 */3 * * *'
   workflow_dispatch:
 
 permissions:
@@ -96,6 +96,7 @@ jobs:
             git remote set-url origin https://x-access-token:${{ secrets.REPO_TOKEN }}@github.com/${{ github.repository }}.git
             git add .github/workflows/GM4F.yml
             git commit -m "Update GM4F cron"
+            git pull --rebase
             git push
           fi
 
