@@ -361,18 +361,8 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           SEEDLOAF: ${{ secrets.SEEDLOAF }}
-          COOKIE_FILE: cookie.txt
         run: |
           cd scripts/seedloaf && python seedloaf.py
-
-      - name: 📝 推送 Cookie 更新
-        if: steps.check.outputs.run == 'true'
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add scripts/seedloaf/cookie.txt
-          git diff --cached --quiet || git commit -m "chore: update seedloaf cookie [skip ci]"
-          git push
 
       - name: 🧹 清理旧的运行记录
         if: always()
