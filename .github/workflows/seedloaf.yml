@@ -53,7 +53,7 @@ jobs:
       - name: 🛡️ 安装并启动代理
         if: steps.check.outputs.run == 'true'
         env:
-          Seedloaf_PROXY_NODE: ${{ secrets.PROXY_URL }}
+          Seedloaf_PROXY_NODE: ${{ secrets.Seedloaf_PROXY_NODE }}
         run: |
           if [ -z "$Seedloaf_PROXY_NODE" ]; then
             echo "[WARN] 未配置代理 URL"
