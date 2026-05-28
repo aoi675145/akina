@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 拉取 workflow 仓库（含 cron）
+      - name: 拉取 workflow 仓库
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.REPO_TOKEN }}
