@@ -1,4 +1,4 @@
-name: Pella Free 指定账号执行
+name: Pella 重启
 
 on:
   schedule:
