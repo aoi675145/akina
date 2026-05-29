@@ -2,7 +2,7 @@ name: GM4F 续期
 
 on:
   schedule:
-    - cron: '30 11 29 5 *'
+    - cron: '17 */3 * * *'
   workflow_dispatch:
 
 permissions:
@@ -45,12 +45,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install seleniumbase undetected-chromedriver requests
 
-      - name: 启用 WARP 网络
-        uses: fscarmen/warp-on-actions@v1.3
-        with:
-          stack: dual
-          mode: client
-
       - name: 修复 DNS
         run: |
           echo "[INFO] 停用 systemd-resolved，设置公共 DNS..."
@@ -67,8 +61,7 @@ jobs:
 
           echo ""
           echo "[INFO] 当前出口 IP: ***.***.***.***"
-          echo "[INFO] WARP Trace:"
-          curl -s --max-time 10 https://www.cloudflare.com/cdn-cgi/trace | grep -E 'warp=|loc=' || true
+          curl -s --max-time 10 https://www.cloudflare.com/cdn-cgi/trace | grep -E 'loc=' || true
 
       - name: 执行续订脚本
         id: renew_run
