@@ -2,7 +2,7 @@ name: GM4F 续期
 
 on:
   schedule:
-    - cron: '20 11 29 5 *'
+    - cron: '17 */3 * * *'
   workflow_dispatch:
 
 permissions:
@@ -47,7 +47,6 @@ jobs:
 
       - name: 执行续订脚本
         id: renew_run
-        continue-on-error: true
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
