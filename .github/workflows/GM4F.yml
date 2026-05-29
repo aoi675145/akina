@@ -2,7 +2,7 @@ name: GM4F 续期
 
 on:
   schedule:
-    - cron: '20 18 29 5 *'
+    - cron: '17 */3 * * *'
   workflow_dispatch:
 
 permissions:
@@ -69,6 +69,12 @@ jobs:
           echo "[INFO] 当前出口 IP: ***.***.***.***"
           echo "[INFO] WARP Trace:"
           curl -s --max-time 10 https://www.cloudflare.com/cdn-cgi/trace | grep -E 'warp=|loc=' || true
+
+      - name: 下载 Turnstile 扩展
+        run: |
+          curl -L -o turnstile.crx \
+            "https://github.com/oyz6/action/releases/download/Verification/turnstile.crx"
+          ls -la turnstile.crx
 
       - name: 执行续订脚本
         id: renew_run
