@@ -2,7 +2,7 @@ name: GM4F 续期
 
 on:
   schedule:
-    - cron: '5 21 30 5 *'
+    - cron: '46 0 31 5 *'
   workflow_dispatch:
 
 permissions:
