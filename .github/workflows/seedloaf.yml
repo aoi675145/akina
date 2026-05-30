@@ -40,7 +40,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: 📦 安装 Playwright 依赖与浏览器
+      - name: 📦 安装 SeleniumBase 依赖与浏览器
         if: steps.check.outputs.run == 'true'
         run: |
           sudo apt-get update
