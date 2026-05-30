@@ -44,11 +44,11 @@ jobs:
         if: steps.check.outputs.run == 'true'
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget
+          sudo apt-get install -y wget xz-utils
 
           python -m pip install --upgrade pip
-          pip install playwright requests
-          python -m playwright install --with-deps chromium
+          pip install seleniumbase requests pyvirtualdisplay
+          python -m seleniumbase install
 
       - name: 🛡️ 安装并启动代理
         if: steps.check.outputs.run == 'true'
