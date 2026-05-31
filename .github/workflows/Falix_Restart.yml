@@ -6,10 +6,6 @@ on:
       accounts:
         description: '指定邮箱（留空全部，多个用逗号）'
         required: false
-      retry:
-        description: '是否为一次性重试运行'
-        required: false
-        default: 'false'
 #  schedule:
 #    - cron: '0 */6 * * *'  # 每 6 小时执行一次
 
@@ -134,13 +130,11 @@ jobs:
 
       - name: 执行重启脚本
         id: falix_run
-        continue-on-error: true
         env:
           FALIX: ${{ secrets.FALIX }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           Falix_PROXY_NODE: ${{ secrets.Falix_PROXY_NODE }}
-          FALIX_RETRY_RUN: ${{ github.event.inputs.retry == 'true' && 'true' || 'false' }}
         run: |
           # 根据是否有 Falix_PROXY_NODE 设置代理
           if [ -n "$Falix_PROXY_NODE" ]; then
@@ -154,38 +148,11 @@ jobs:
           cd scripts/Falix
           python main.py
 
-      - name: 失败后重开一次工作流
-        if: steps.falix_run.outcome == 'failure' && github.event.inputs.retry != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
-        run: |
-          gh workflow run "${{ github.workflow }}" \
-            --repo "${{ github.repository }}" \
-            --ref "${{ github.ref_name }}" \
-            -f retry=true \
-            -f accounts="${{ github.event.inputs.accounts }}"
-          exit 1
-
-      - name: 重试后仍失败则停止
-        if: steps.falix_run.outcome == 'failure' && github.event.inputs.retry == 'true'
-        run: |
-          echo "[ERROR] Falix 第二轮 15 次仍未成功，已停止自动重试。"
-          exit 1
-
-#      - name: 上传截图
-#        if: always()
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: screenshots-${{ github.run_number }}
-#          path: output/falix/*.png
-#          retention-days: 7
-#          if-no-files-found: ignore
-
       - name: 清理运行记录
         if: always()
         uses: Mattraks/delete-workflow-runs@v2
         with:
-          token: ${{ secrets.REPO_TOKEN }}
+          token: ${{ github.token }}
           repository: ${{ github.repository }}
           delete_workflow_pattern: ${{ github.workflow }}
           retain_days: 0
