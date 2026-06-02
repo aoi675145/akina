@@ -354,7 +354,7 @@ jobs:
           echo "::add-mask::$Ice_PROXY_NODE"
           echo "::add-mask::$BOT_TOKEN"
           echo "::add-mask::$TG_CHAT_ID"
-          python icehost/main.py 2>&1 | tee renew.log
+          python private-scripts/scripts/Icehost/main.py 2>&1 | tee renew.log
 
       # - name: 自动修改下一次运行时间
       #   env:
