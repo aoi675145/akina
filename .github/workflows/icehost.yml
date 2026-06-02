@@ -31,10 +31,17 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: 📦 安装依赖
+      - name: 📦 安装底层依赖与浏览器
         run: |
+          sudo sed -i 's|URIs: mirror+file:/etc/apt/apt-mirrors.txt|URIs: https://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+          sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g; s|https://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources
+
+          sudo apt-get update
+          sudo apt-get install -y xvfb xdotool
+           
           python -m pip install --upgrade pip
-          pip install requests
+          pip install seleniumbase requests
+          seleniumbase install chromedriver
 
       - name: 🛡️ 安装并启动代理
         env:
@@ -354,7 +361,8 @@ jobs:
           echo "::add-mask::$Ice_PROXY_NODE"
           echo "::add-mask::$BOT_TOKEN"
           echo "::add-mask::$TG_CHAT_ID"
-          python private-scripts/scripts/Icehost/main.py 2>&1 | tee renew.log
+          # 使用 xvfb-run 分配虚拟屏幕，让 xdotool 能够正常点击
+          xvfb-run -a python private-scripts/scripts/Icehost/main.py 2>&1 | tee renew.log
 
       # - name: 自动修改下一次运行时间
       #   env:
