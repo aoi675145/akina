@@ -40,7 +40,7 @@ jobs:
           sudo apt-get install -y xvfb xdotool
            
           python -m pip install --upgrade pip
-          pip install seleniumbase requests pyautogui
+          pip install seleniumbase requests
           seleniumbase install chromedriver
 
       - name: 🛡️ 安装并启动代理
@@ -362,7 +362,7 @@ jobs:
           echo "::add-mask::$BOT_TOKEN"
           echo "::add-mask::$TG_CHAT_ID"
           # 使用 xvfb-run 分配虚拟屏幕，让 xdotool 能够正常点击
-          xvfb-run -a -s "-screen 0 1920x1080x24" python private-scripts/scripts/Icehost/main.py 2>&1 | tee renew.log
+          xvfb-run -a python private-scripts/scripts/Icehost/main.py 2>&1 | tee renew.log
 
       # - name: 自动修改下一次运行时间
       #   env:
