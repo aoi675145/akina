@@ -1,98 +1,74 @@
 name: godlike warp 续期
-
 on:
   workflow_dispatch:
-    inputs:
-      accounts:
-        description: '指定ID（留空运行全部）'
-        required: false
-        default: ''
-
-permissions:
-  actions: write
-  contents: read
-
+  # schedule:
+  #   - cron: '0 */6 * * *'
 jobs:
-  run-renew:
-    name: 执行续期脚本
-    runs-on: ubuntu-latest
-
+  run:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
     steps:
-      - name: 从私库拉取脚本
-        env:
-          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
-        run: |
-          curl -H "Authorization: Bearer $REPO_TOKEN" \
-            -L -o renew.py \
-            "https://raw.githubusercontent.com/aoi675145/scripts/main/scripts/godlike/renew.py"
-          ls -la renew.py
-
-      - name: 配置 Python 环境
+      - name: 检出当前仓库
+        uses: actions/checkout@v4
+      - name: 检出私有脚本仓库
+        uses: actions/checkout@v4
+        with:
+          repository: akina005/scripts
+          token: ${{ secrets.REPO_TOKEN }}
+          path: private-repo
+      - name: 设置 Node 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 设置 Python 环境
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-
-      - name: 安装系统依赖
+      - name: 安装系统和识别依赖
         run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb ffmpeg unzip curl
-          wget -q -O /tmp/google-chrome-stable_current_amd64.deb \
-            https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo dpkg -i /tmp/google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y
-
-      - name: 安装 Python 依赖
+          sudo apt-get update -o Acquire::Retries=3
+          sudo apt-get install -y --no-install-recommends -o Acquire::Retries=3 xvfb unzip curl
+      - name: 安装静态 FFmpeg
+        run: |
+          curl -L -o /tmp/ffmpeg.tar.xz https://github.com/akina005/akina/releases/download/ffmpeg/ffmpeg-release-amd64-static.tar.xz
+          mkdir -p /tmp/ffmpeg-static
+          tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-static --strip-components=1
+          sudo ln -sf /tmp/ffmpeg-static/ffmpeg /usr/local/bin/ffmpeg
+          sudo ln -sf /tmp/ffmpeg-static/ffprobe /usr/local/bin/ffprobe
+          ffmpeg -version
+      - name: 安装 Python 识别依赖
         run: |
           python -m pip install --upgrade pip
-          python -m pip install DrissionPage DataRecorder DownloadKit xvfbwrapper requests SpeechRecognition pydub
-          python - <<'PY'
-          import DataRecorder
-          import DrissionPage
-          print('[INFO] Python 依赖校验通过')
-          PY
-
+          pip install SpeechRecognition pydub
+      - name: 安装 Playwright 浏览器
+        timeout-minutes: 10
+        run: |
+          cd private-repo/scripts/godlike
+          npm install
+          npx playwright install chromium
       - name: 启用 WARP 网络
+        continue-on-error: true
         uses: fscarmen/warp-on-actions@v1.3
         with:
           stack: dual
           mode: client
-
-      - name: 修复 DNS
+      - name: 检查当前出口 IP
         run: |
-          sudo systemctl stop systemd-resolved 2>/dev/null || true
-          sudo systemctl disable systemd-resolved 2>/dev/null || true
-          sudo rm -f /etc/resolv.conf
-          echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 1.0.0.1" \
-            | sudo tee /etc/resolv.conf
-          sleep 2
-          echo "[INFO] 当前出口 IP:"
-          curl -s --max-time 10 https://api.ipify.org && echo
-          echo "[INFO] WARP Trace:"
-          curl -s --max-time 10 https://www.cloudflare.com/cdn-cgi/trace \
-            | grep -E 'ip=|warp=|loc=' || true
-
-      - name: 执行续订
+          curl -s https://api.ipify.org
+          echo
+          curl -s https://ipinfo.io
+      - name: 执行自动续期脚本
         env:
-          GODLIKE_ID: ${{ secrets.GODLIKE_ID }}
-          GODLIKE_ID_INPUT: ${{ github.event.inputs.accounts }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-          PYTHONUNBUFFERED: "1"
-        run: python -u renew.py
-
-      - name: 上传截图
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots-${{ github.run_number }}
-          path: output/screenshots/*.png
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: 清理历史运行记录
+        run: |
+          mkdir -p private-repo/scripts/godlike/screenshots
+          xvfb-run -a node private-repo/scripts/godlike/warp.js
+      - name: 清理旧的工作流运行记录
         if: always()
         uses: Mattraks/delete-workflow-runs@v2
         with:
-          token: ${{ secrets.REPO_TOKEN }}
+          token: ${{ github.token }}
           repository: ${{ github.repository }}
           delete_workflow_pattern: ${{ github.workflow }}
           retain_days: 0
