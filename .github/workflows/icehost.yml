@@ -351,32 +351,18 @@ jobs:
 
       - name: 🚀 运行 Icehost Python 脚本
         env:
+          Icehost: ${{ secrets.Icehost }}
+          ICEHOST_COOKIE: ${{ secrets.ICEHOST_COOKIE }}
           Ice_PROXY_NODE: ${{ env.PROXY_SERVER }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: |
+          echo "::add-mask::$ICEHOST_COOKIE"
           echo "::add-mask::$Ice_PROXY_NODE"
           echo "::add-mask::$BOT_TOKEN"
           echo "::add-mask::$TG_CHAT_ID"
           # 使用 xvfb-run 分配虚拟屏幕，让 xdotool 能够正常点击
           xvfb-run -a -s "-screen 0 1920x1080x24" python private-scripts/scripts/Icehost/main.py 2>&1 | tee renew.log
-
-      - name: 📦 保存更新后的 Cookie
-        if: success()
-        env:
-          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
-        run: |
-          cd private-scripts
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet scripts/Icehost/cookie.txt 2>/dev/null; then
-            echo "[INFO] cookie.txt 无变化，跳过提交"
-          else
-            git add scripts/Icehost/cookie.txt
-            git commit -m "auto: update cookie.txt"
-            git push origin main
-            echo "[INFO] ✅ cookie.txt 已提交到私库"
-          fi
 
       # - name: 自动修改下一次运行时间
       #   env:
