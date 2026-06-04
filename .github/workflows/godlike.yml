@@ -1,4 +1,4 @@
-name: godlike warp 续期
+name: godlike 续期
 
 on:
   workflow_dispatch:
