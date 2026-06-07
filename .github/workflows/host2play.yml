@@ -52,7 +52,7 @@ jobs:
         uses: fscarmen/warp-on-actions@v1.3
         with:
           stack: dual
-          mode: client
+          mode: wireguard
 
       - name: 修复 DNS
         run: |
