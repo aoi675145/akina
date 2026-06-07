@@ -48,11 +48,16 @@ jobs:
           print('[INFO] Python 依赖校验通过')
           PY
 
+      - name: 安装 WARP 依赖（openresolv）
+        run: |
+          wget -q "http://archive.ubuntu.com/ubuntu/pool/main/o/openresolv/openresolv_3.13.2-1_all.deb" -O /tmp/openresolv.deb
+          sudo dpkg -i /tmp/openresolv.deb
+
       - name: 启用 WARP 网络
         uses: fscarmen/warp-on-actions@v1.3
         with:
           stack: dual
-          mode: client
+          mode: wireguard
 
       - name: 修复 DNS
         run: |
