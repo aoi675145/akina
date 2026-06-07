@@ -52,7 +52,7 @@ jobs:
         uses: fscarmen/warp-on-actions@v1.3
         with:
           stack: dual
-          mode: wireguard
+          mode: client
 
       - name: 修复 DNS
         run: |
@@ -81,10 +81,11 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           WORKFLOW_RETRY: ${{ github.event.inputs.retry }}
+          PYTHONUNBUFFERED: "1"
         run: |
           cd scripts/host2play
           set -o pipefail
-          python main.py 2>&1 | sed -E \
+          python main.py 2>&1 | sed --unbuffered -E \
             -e 's#(https://host2play\.gratis/server/renew\?i=)[^[:space:]'"'"'"<>]+#\1***#g' \
             -e 's#\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b#***#g' \
             -e 's#bot[0-9]{6,}:[A-Za-z0-9_-]+#bot***#g' \
