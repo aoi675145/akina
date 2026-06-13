@@ -1,8 +1,9 @@
 name: FreeMcServer 续期
 
 on:
-  schedule:
-    - cron: '17 */3 * * *'
+#  schedule:
+#    # 每 2 小时 30 分运行一次
+#    - cron: '30 */2 * * *'
   workflow_dispatch:
     inputs:
       retry:
@@ -50,10 +51,10 @@ jobs:
 
       - name: 构建 Xray 配置
         env:
-          freemc_PROXY_NODE: ${{ secrets.freemc_PROXY_NODE }}
+          FREEMC_PROXY_NODE: ${{ secrets.FREEMC_PROXY_NODE }}
         run: |
-          if [ -z "${freemc_PROXY_NODE}" ]; then
-            echo "[ERROR] freemc_PROXY_NODE 未配置，禁止直连"
+          if [ -z "${FREEMC_PROXY_NODE}" ]; then
+            echo "[ERROR] FREEMC_PROXY_NODE 未配置，禁止直连"
             exit 1
           fi
 
@@ -63,7 +64,7 @@ jobs:
           import os
           from urllib.parse import parse_qs, unquote, urlparse
 
-          proxy_url = os.environ["freemc_PROXY_NODE"].strip()
+          proxy_url = os.environ["FREEMC_PROXY_NODE"].strip()
           parsed = urlparse(proxy_url)
           scheme = parsed.scheme
 
