@@ -85,7 +85,7 @@ jobs:
         run: |
           cd scripts/host2play
           set -o pipefail
-          python main.py 2>&1 | sed --unbuffered -E \
+          stdbuf -oL python -u main.py 2>&1 | sed --unbuffered -E \
             -e 's#(https://host2play\.gratis/server/renew\?i=)[^[:space:]'"'"'"<>]+#\1***#g' \
             -e 's#\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b#***#g' \
             -e 's#bot[0-9]{6,}:[A-Za-z0-9_-]+#bot***#g' \
@@ -115,4 +115,4 @@ jobs:
           repository: ${{ github.repository }}
           delete_workflow_pattern: ${{ github.workflow }}
           retain_days: 0
-          keep_minimum_runs: 6
+          keep_minimum_runs: 2
