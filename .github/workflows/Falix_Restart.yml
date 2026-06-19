@@ -41,7 +41,7 @@ jobs:
           ffmpeg -version
           pip install -q seleniumbase requests pyvirtualdisplay
 
-      - name: 配置代理 (VLESS)
+      - name: 配置代理
         env:
           Falix_PROXY_NODE: ${{ secrets.Falix_PROXY_NODE }}
         run: |
