@@ -1,4 +1,4 @@
-name: Cleanup Failed and Cancelled Runs
+name: 清理
 
 on:
   workflow_dispatch:
