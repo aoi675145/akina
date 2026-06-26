@@ -50,6 +50,7 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           ACCOUNT_NAME: ${{ github.event.inputs.account_name }}
+          SKIP_RESTART: ${{ github.event_name == 'schedule' && 'true' || '' }}
         run: python scripts/PellaFree/PellaFree_Renew.py
 #        > /dev/null 2>&1
 #      - name: 上传截图
@@ -63,7 +64,7 @@ jobs:
       - name: 清理历史运行记录
         uses: Mattraks/delete-workflow-runs@v2
         with:
-          token: ${{ secrets.REPO_TOKEN }}
+          token: ${{ github.token }}
           repository: ${{ github.repository }}
           delete_workflow_pattern: ${{ github.workflow }}
           retain_days: 0
