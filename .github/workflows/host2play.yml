@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       retry:
-        description: 'Whether this run is the one-time retry'
+        description: 'Retry attempt number (0=initial, 1=first retry, 2=second retry)'
         required: false
-        default: 'false'
+        default: '0'
 
 permissions:
   actions: write
@@ -80,25 +80,27 @@ jobs:
           H2PLAY_RENEW_URLS: ${{ secrets.H2PLAY_RENEW_URLS }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-          WORKFLOW_RETRY: ${{ github.event.inputs.retry }}
+          WORKFLOW_RETRY: ${{ github.event.inputs.retry || '0' }}
           PYTHONUNBUFFERED: "1"
         run: |
           cd scripts/host2play
-          python main.py 2>&1
+          stdbuf -oL python -u main.py 2>&1
 
-      - name: 续订失败后重开一次工作流
-        if: steps.renew_run.outcome == 'failure' && github.event.inputs.retry != 'true'
+      - name: 续订失败后重新触发工作流
+        if: steps.renew_run.outcome == 'failure' && '${{ github.event.inputs.retry || '0' }}' != '2'
         env:
           GH_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
+          current=${{ github.event.inputs.retry || '0' }}
+          next=$(( current + 1 ))
           gh workflow run "${{ github.workflow }}" \
             --repo "${{ github.repository }}" \
             --ref "${{ github.ref_name }}" \
-            -f retry=true
+            -f retry=$next
           exit 1
 
-      - name: 重试后仍失败则停止
-        if: steps.renew_run.outcome == 'failure' && github.event.inputs.retry == 'true'
+      - name: 重试 2 次后仍失败则停止
+        if: steps.renew_run.outcome == 'failure' && '${{ github.event.inputs.retry || '0' }}' == '2'
         run: exit 1
 
       - name: 清理历史运行记录
