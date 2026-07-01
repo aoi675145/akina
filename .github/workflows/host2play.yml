@@ -84,11 +84,11 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: |
           cd scripts/host2play
-          stdbuf -oL python -u main.py 2>&1
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
+          stdbuf -oL python -u main.py 2>&1 && rc=0 || rc=$?
+          echo "exit_code=$rc" >> $GITHUB_OUTPUT
 
       - name: 续订失败后重新触发工作流
-        if: steps.renew_run.outputs.exit_code != '0' && (github.event.inputs.retry || '0') != '2'
+        if: steps.renew_run.outputs.exit_code != '0' && github.event.inputs.retry != '2'
         env:
           GH_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
@@ -101,7 +101,7 @@ jobs:
           exit 1
 
       - name: 重试 2 次后仍失败则停止
-        if: steps.renew_run.outputs.exit_code != '0' && (github.event.inputs.retry || '0') == '2'
+        if: steps.renew_run.outputs.exit_code != '0' && github.event.inputs.retry == '2'
         run: exit 1
 
       - name: 清理历史运行记录
