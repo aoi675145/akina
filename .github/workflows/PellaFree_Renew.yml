@@ -1,8 +1,6 @@
 name: Pella 重启
 
 on:
-  schedule:
-    - cron: '10 0 * * *'  # 每天北京时间 08:10 运行
   workflow_dispatch:
     inputs:
       account_name:
@@ -44,13 +42,12 @@ jobs:
       - name: 安装 Python 依赖
         run: pip install selenium==4.15.0 requests==2.31.0 webdriver-manager==4.0.1
       
-      - name: 运行续期脚本
+      - name: 运行脚本
         env:
           PELLA_ACCOUNTS: ${{ secrets.PELLA_ACCOUNTS }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           ACCOUNT_NAME: ${{ github.event.inputs.account_name }}
-          SKIP_RESTART: ${{ github.event_name == 'schedule' && 'true' || '' }}
         run: python scripts/PellaFree/PellaFree_Renew.py
 #        > /dev/null 2>&1
 #      - name: 上传截图
