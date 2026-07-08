@@ -1,8 +1,8 @@
 name: Icehost Auto Renew
 on:
+  schedule:
+    - cron: '5 */6 * * *'
   workflow_dispatch:
-  # schedule:
-  #   - cron: '59 3 17 4 *' # 已注释，改由外部触发
 
 jobs:
   run_renewal:
