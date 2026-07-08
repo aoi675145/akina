@@ -1,7 +1,5 @@
 name: Icehost Auto Renew
 on:
-  schedule:
-    - cron: '50 */6 * * *'
   workflow_dispatch:
 
 jobs:
