@@ -1,6 +1,8 @@
 name: Pella 重启
 
 on:
+  schedule:
+    - cron: '15 0 * * *'
   workflow_dispatch:
     inputs:
       account_name:
@@ -48,6 +50,7 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           ACCOUNT_NAME: ${{ github.event.inputs.account_name }}
+          SKIP_RESTART: ${{ github.event_name == 'schedule' && 'true' || '' }}
         run: python scripts/PellaFree/PellaFree_Renew.py
 #        > /dev/null 2>&1
 #      - name: 上传截图
