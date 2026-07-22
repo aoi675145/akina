@@ -2,7 +2,7 @@ name: TheRose 续期
 
 on:
   schedule:
-    - cron: "28 1,7,13,19 * * *"
+    - cron: "0 */6 * * *"
   workflow_dispatch:
 
 jobs:
@@ -143,6 +143,9 @@ jobs:
           sed -n '1,20p' xray.log || true
 
           if curl -fsS --max-time 15 --proxy "http://127.0.0.1:8080" https://api.ipify.org >/tmp/therose_proxy_ip; then
+            IP=$(cat /tmp/therose_proxy_ip)
+            MASKED=$(echo "$IP" | sed 's/\.[0-9]*\.[0-9]*\./.xxx.xxx./')
+            echo "[INFO] 代理可用，出口 IP: $MASKED"
             echo "PROXY_SERVER=http://127.0.0.1:8080" >> "$GITHUB_ENV"
           else
             echo "[WARN] 代理不可用，将直连访问"
@@ -152,7 +155,9 @@ jobs:
       - name: 检查代理出口
         run: |
           if [ -n "${PROXY_SERVER}" ]; then
-            echo "[INFO] 代理出口 IP: $(curl -fsS --max-time 15 --proxy "${PROXY_SERVER}" https://api.ipify.org)"
+            IP=$(curl -fsS --max-time 15 --proxy "${PROXY_SERVER}" https://api.ipify.org)
+            MASKED=$(echo "$IP" | sed 's/\.[0-9]*\.[0-9]*\./.xxx.xxx./')
+            echo "[INFO] 代理出口 IP: $MASKED"
             echo "[INFO] 检查 TheRose 面板可访问..."
             curl -fsSI --max-time 30 --proxy "${PROXY_SERVER}" https://client.therose.cloud/login | sed -n '1,8p'
           else
