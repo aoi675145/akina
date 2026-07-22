@@ -1,8 +1,6 @@
 name: TheRose 续期
 
 on:
-  schedule:
-    - cron: "2 20 22 7 *"
   workflow_dispatch:
 
 jobs:
@@ -10,7 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: write
       actions: write
 
     steps:
@@ -176,35 +173,6 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           PROXY_SERVER: ${{ env.PROXY_SERVER }}
         run: xvfb-run python /tmp/scripts/scripts/therose/therose.py
-
-      - name: 自动修改下次 Cron
-        if: always()
-        env:
-          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
-          WORKFLOW_REPO: ${{ github.repository }}
-        run: |
-          CRON_FILE="cron.txt"
-          if [ ! -f "$CRON_FILE" ]; then
-            echo "⏭️ cron.txt 不存在，跳过 cron 更新"
-            exit 0
-          fi
-
-          NEW_CRON=$(cat "$CRON_FILE" | tr -d '\n')
-          echo "📟 新 cron: $NEW_CRON"
-
-          git clone https://x-access-token:${REPO_TOKEN}@github.com/${WORKFLOW_REPO}.git wf-repo
-          cd wf-repo
-
-          WF=".github/workflows/therose.yml"
-          sed -i "s| cron: \".*\"| cron: \"$NEW_CRON\"|" "$WF"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "$WF"
-          git commit -m "🔄 自动更新续期 Cron 为 $NEW_CRON" || echo "ℹ️  无变更需提交"
-          git push
-
-          echo "✅ Cron 更新成功"
 
       - name: 清理运行记录
         uses: Mattraks/delete-workflow-runs@v2
