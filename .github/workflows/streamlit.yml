@@ -44,7 +44,7 @@ jobs:
             exit 1
           fi
           echo "开始执行 Streamlit 应用唤醒任务..."
-          python scripts/Streamlit/Keep.py
+          python scripts/streamlit/Keep.py
           echo "唤醒任务执行完毕！"
 
       - name: 清理历史运行记录
