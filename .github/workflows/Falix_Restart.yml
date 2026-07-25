@@ -164,7 +164,7 @@ jobs:
           fi
           
           # 进入私库对应的目录并执行
-          cd scripts/Falix
+          cd scripts/falix
           python main.py
 
       - name: 清理运行记录
