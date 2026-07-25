@@ -238,7 +238,7 @@ jobs:
           PROXY_SERVER: ${{ env.PROXY_SERVER }}
           FREEMC_RETRY_RUN: ${{ github.event.inputs.retry == 'true' && 'true' || 'false' }}
         run: |
-          xvfb-run -a python scripts/FreeMcServer/main.py
+          xvfb-run -a python scripts/freemc/main.py
 
       - name: 失败后重开一次工作流
         if: steps.freemc_run.outcome == 'failure' && github.event.inputs.retry != 'true'
