@@ -1,4 +1,4 @@
-name: FalixNodes 重启
+name: Falix 重启
 
 on:
   workflow_dispatch:
