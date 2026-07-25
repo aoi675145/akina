@@ -22,7 +22,7 @@ jobs:
           repository: 'aoi675145/scripts'          
           token: ${{ secrets.REPO_TOKEN }}
           sparse-checkout: |
-            scripts/gm4/GM4F.py
+            scripts/gm4f/gm4f.py
           sparse-checkout-cone-mode: false
           path: private-scripts
 
@@ -287,7 +287,7 @@ jobs:
           GM4F_PROXY: ${{ env.GM4F_PROXY_SOCKS5 }}
         run: |
           set -o pipefail
-          xvfb-run -a python -u private-scripts/scripts/gm4/GM4F.py 2>&1 | stdbuf -oL sed -E \
+          xvfb-run -a python -u private-scripts/scripts/gm4f/gm4f.py 2>&1 | stdbuf -oL sed -E \
             -e 's#(https://g4f\.gg/)[^[:space:]'"'"'"<>]+#\1***#g' \
             -e 's#\bwbxl0\b#***#g' \
             -e 's#\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b#***#g' \
