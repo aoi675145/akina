@@ -1,4 +1,4 @@
-name: Game4Free 投票续期
+name: Game4Free 续期
 
 on:
   workflow_dispatch:
