@@ -50,6 +50,7 @@ jobs:
           GAME4FREE_PROXY: ${{ secrets.GAME4FREE_PROXY }}
           REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
+          echo "::debug::GAME4FREE_PROXY len=$(echo -n "$GAME4FREE_PROXY" | wc -c)"
           xvfb-run -a --server-args="-screen 0 1920x1080x24" \
             python -u game4free.py
 
