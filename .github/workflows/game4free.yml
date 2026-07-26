@@ -1,4 +1,4 @@
-name: Game4Free 续期
+name: Game4Free 投票续期
 
 on:
   workflow_dispatch:
@@ -30,15 +30,6 @@ jobs:
             "https://raw.githubusercontent.com/aoi675145/scripts/main/scripts/game4free/game4free.py"
           echo "[INFO] ✅ game4free.py 已下载 ($(wc -l < game4free.py) 行)"
 
-      - name: 设置代理 (sing-box)
-        env:
-          GAME4FREE_PROXY: ${{ secrets.GAME4FREE_PROXY }}
-          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
-        run: |
-          NODE_LINK="$GAME4FREE_PROXY" bash <(curl -fsSL \
-            -H "Authorization: Bearer ${REPO_TOKEN}" \
-            "https://raw.githubusercontent.com/aoi675145/scripts/main/scripts/setup_proxy.sh.sh")
-
       - name: 安装系统依赖
         run: |
           sudo apt-get update -qq
@@ -56,6 +47,7 @@ jobs:
           TG_BOT: ${{ secrets.TG_BOT }}
           GAME4FREE_ACCOUNT: ${{ secrets.GAME4FREE_ACCOUNT }}
           GAME4FREE_PROXY: ${{ secrets.GAME4FREE_PROXY }}
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
           xvfb-run -a --server-args="-screen 0 1920x1080x24" \
             python -u game4free.py
