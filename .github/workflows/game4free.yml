@@ -41,38 +41,28 @@ jobs:
       - name: 安装 ChromeDriver
         run: seleniumbase install chromedriver
 
-      - name: 轮换代理并执行续期
+      - name: 设置代理 (sing-box)
+        id: setup_proxy
         env:
           GAME4FREE_PROXY: ${{ secrets.GAME4FREE_PROXY }}
-          GAME4FREE_ACCOUNT: ${{ secrets.GAME4FREE_ACCOUNT }}
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: |
+          NODE=$(printf '%s' "$GAME4FREE_PROXY" | head -1 | xargs)
+          NODE_LINK="$NODE" bash <(curl -fsSL \
+            -H "Authorization: Bearer ${REPO_TOKEN}" \
+            "https://raw.githubusercontent.com/aoi675145/scripts/main/scripts/setup_proxy.sh.sh")
+
+      - name: 执行 Game4Free 投票续期
+        env:
+          IS_PROXY: true
+          PROXY_SERVER: socks5://127.0.0.1:1080
           TG_BOT: ${{ secrets.TG_BOT }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+          GAME4FREE_ACCOUNT: ${{ secrets.GAME4FREE_ACCOUNT }}
         run: |
-          echo "[INFO] 开始轮换代理执行续期..."
-
-          printf '%s\n' "$GAME4FREE_PROXY" | while IFS= read -r node; do
-            node=$(printf '%s' "$node" | xargs)
-            [ -z "$node" ] && continue
-
-            echo "----------------------------------------"
-            echo "[INFO] 切换到节点: $(printf '%s' "$node" | head -c 50)..."
-            echo "----------------------------------------"
-
-            pkill -f sing-box 2>/dev/null || true
-            sleep 1
-
-            NODE_LINK="$node" bash <(curl -fsSL \
-              -H "Authorization: Bearer ${REPO_TOKEN}" \
-              "https://raw.githubusercontent.com/aoi675145/scripts/main/scripts/setup_proxy.sh.sh")
-
-            export IS_PROXY=true
-            export PROXY_SERVER="socks5://127.0.0.1:1080"
-
-            xvfb-run -a --server-args="-screen 0 1920x1080x24" \
-              python -u game4free.py
-          done
+          xvfb-run -a --server-args="-screen 0 1920x1080x24" \
+            python -u game4free.py
 
       - name: 清理进程
         if: always()
