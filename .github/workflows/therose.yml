@@ -24,13 +24,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable xvfb
 
-      - name: 修复 DNS
-        run: |
-          sudo systemctl stop systemd-resolved 2>/dev/null || true
-          sudo systemctl disable systemd-resolved 2>/dev/null || true
-          sudo rm -f /etc/resolv.conf
-          echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 1.0.0.1" | sudo tee /etc/resolv.conf
-
       - name: 安装并启动代理
         env:
           PROXY_LINK: ${{ secrets.TheRose_Proxy }}
@@ -41,7 +34,7 @@ jobs:
             exit 0
           fi
 
-          wget -q https://github.com/akina005/akina/releases/download/proxy/Xray-linux-64.zip
+          wget -q --timeout=30 --tries=3 https://github.com/akina005/akina/releases/download/proxy/Xray-linux-64.zip
           mkdir -p xray-bin
           unzip -oq Xray-linux-64.zip -d xray-bin
           chmod +x xray-bin/xray
@@ -156,15 +149,24 @@ jobs:
             MASKED=$(echo "$IP" | sed 's/\.[0-9]*\.[0-9]*\./.xxx.xxx./')
             echo "[INFO] 代理出口 IP: $MASKED"
             echo "[INFO] 检查 TheRose 面板可访问..."
-            curl -fsSI --max-time 30 --proxy "${PROXY_SERVER}" https://client.therose.cloud/login | sed -n '1,8p'
+            curl -sSI --connect-timeout 10 --max-time 30 --proxy "${PROXY_SERVER}" https://client.therose.cloud/login | sed -n '1,8p' || echo "[WARN] HTTP 预检失败，将交由浏览器继续尝试"
           else
             echo "[INFO] 直连模式，检查 TheRose 面板可访问..."
-            curl -fsSI --max-time 30 https://client.therose.cloud/login | sed -n '1,8p'
+            curl -sSI --connect-timeout 10 --max-time 30 https://client.therose.cloud/login | sed -n '1,8p' || echo "[WARN] HTTP 预检失败，将交由浏览器继续尝试"
           fi
 
-      - name: 拉取私库脚本
+      - name: 下载私库脚本
+        env:
+          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
-          git clone https://${{ secrets.REPO_TOKEN }}@github.com/aoi675145/scripts.git /tmp/scripts
+          curl --fail --location --silent --show-error \
+            --connect-timeout 15 --max-time 60 --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github.raw+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/aoi675145/scripts/contents/scripts/therose/therose.py?ref=main" \
+            --output /tmp/therose.py
+          test -s /tmp/therose.py
 
       - name: 执行续期
         env:
@@ -172,7 +174,7 @@ jobs:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           PROXY_SERVER: ${{ env.PROXY_SERVER }}
-        run: xvfb-run python /tmp/scripts/scripts/therose/therose.py
+        run: xvfb-run python /tmp/therose.py
 
       - name: 清理运行记录
         uses: Mattraks/delete-workflow-runs@v2
