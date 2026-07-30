@@ -19,10 +19,15 @@ jobs:
       - name: 安装依赖
         run: pip install seleniumbase requests
 
-      - name: 安装 Chrome
+      - name: 安装 Chrome 和 UC 驱动
         run: |
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable xvfb
+          seleniumbase install uc_driver > /tmp/uc_driver_install.log 2>&1 || {
+            cat /tmp/uc_driver_install.log
+            exit 1
+          }
+          echo "[INFO] UC 驱动已准备"
 
       - name: 安装并启动代理
         env:
