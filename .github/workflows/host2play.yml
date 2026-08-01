@@ -1,0 +1,124 @@
+name: Host2Play Auto Renew
+
+on:
+  schedule:
+    - cron: '0 0,11,22 * * *'
+    - cron: '30 5,16 * * *'
+  workflow_dispatch:
+    inputs:
+      retry:
+        description: 'Retry attempt number (0=initial, 1=first retry, 2=second retry)'
+        required: false
+        default: '0'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  run-renew:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 拉取私有仓库代码
+        uses: actions/checkout@v4
+        with:
+          repository: 'aoi675145/scripts'
+          token: ${{ secrets.REPO_TOKEN }}
+
+      - name: 配置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 安装系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb ffmpeg unzip curl
+          wget -q -O /tmp/google-chrome-stable_current_amd64.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo dpkg -i /tmp/google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y
+
+      - name: 安装 Python 依赖
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install SeleniumBase xvfbwrapper requests SpeechRecognition pydub
+          python - <<'PY'
+          import seleniumbase
+          import speech_recognition
+          import pydub
+          print('[INFO] Python 依赖校验通过')
+          PY
+
+      - name: 预安装 SeleniumBase UC 驱动
+        run: |
+          seleniumbase install uc_driver > /tmp/uc_driver_install.log 2>&1 || {
+            cat /tmp/uc_driver_install.log
+            exit 1
+          }
+          echo "[INFO] SeleniumBase UC 驱动已准备"
+
+      - name: 启用 WARP 网络
+        uses: fscarmen/warp-on-actions@v1.3
+        with:
+          stack: dual
+          mode: client
+
+      - name: 修复 DNS
+        run: |
+          echo "[INFO] 停用 systemd-resolved，设置公共 DNS..."
+          sudo systemctl stop systemd-resolved 2>/dev/null || true
+          sudo systemctl disable systemd-resolved 2>/dev/null || true
+
+          sudo rm -f /etc/resolv.conf
+          echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 1.0.0.1" | sudo tee /etc/resolv.conf
+
+          sleep 2
+
+          echo "[INFO] DNS 测试:"
+          nslookup host2play.gratis 1.1.1.1 || echo "[WARN] 解析失败"
+
+          echo ""
+          echo "[INFO] 当前出口 IP: ***.***.***.***"
+          echo "[INFO] WARP Trace:"
+          curl -s --max-time 10 https://www.cloudflare.com/cdn-cgi/trace | grep -E 'warp=|loc=' || true
+
+      - name: 执行续订脚本
+        id: renew_run
+        continue-on-error: true
+        env:
+          H2PLAY_RENEW_URLS: ${{ secrets.H2PLAY_RENEW_URLS }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          WORKFLOW_RETRY: ${{ github.event.inputs.retry || '0' }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd scripts/host2play
+          stdbuf -oL python -u main.py 2>&1 && rc=0 || rc=$?
+          echo "exit_code=$rc" >> $GITHUB_OUTPUT
+
+      - name: 续订失败后重新触发工作流
+        if: steps.renew_run.outputs.exit_code != '0' && github.event.inputs.retry != '2'
+        env:
+          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: |
+          current=${{ github.event.inputs.retry || '0' }}
+          next=$(( current + 1 ))
+          gh workflow run "${{ github.workflow }}" \
+            --repo "${{ github.repository }}" \
+            --ref "${{ github.ref_name }}" \
+            -f retry=$next
+          exit 1
+
+      - name: 重试 2 次后仍失败则停止
+        if: steps.renew_run.outputs.exit_code != '0' && github.event.inputs.retry == '2'
+        run: exit 1
+
+      - name: 清理历史运行记录
+        if: always()
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          delete_workflow_pattern: ${{ github.workflow }}
+          retain_days: 0
+          keep_minimum_runs: 2
