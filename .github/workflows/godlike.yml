@@ -32,10 +32,18 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: 修复 apt 源（绕过卡死的 azure 镜像）
+        run: |
+          # noble 的源在 ubuntu.sources 中指向 mirror+file:///etc/apt/apt-mirrors.txt（azure 镜像，经常超时）
+          # 固定为官方 https 源，并删除 mirrors 文件
+          sudo sed -i 's|mirror+file:///etc/apt/apt-mirrors.txt|https://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+          sudo rm -f /etc/apt/apt-mirrors.txt
+          grep -H '^URIs' /etc/apt/sources.list.d/*.sources || true
+
       - name: 安装系统依赖
         run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb ffmpeg unzip curl
+          sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15
+          sudo apt-get install -y -o Acquire::Retries=3 xvfb ffmpeg unzip curl
           wget -q -O /tmp/google-chrome-stable_current_amd64.deb \
             https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo dpkg -i /tmp/google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y
