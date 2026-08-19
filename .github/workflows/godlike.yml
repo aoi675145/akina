@@ -34,11 +34,23 @@ jobs:
 
       - name: 修复 apt 源（绕过卡死的 azure 镜像）
         run: |
-          # noble 的源在 ubuntu.sources 中指向 mirror+file:///etc/apt/apt-mirrors.txt（azure 镜像，经常超时）
-          # 固定为官方 https 源，并删除 mirrors 文件
-          sudo sed -i 's|mirror+file:///etc/apt/apt-mirrors.txt|https://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+          # 直接整体重写 ubuntu.sources 为官方 https 源（deb822 格式），
+          # 不再依赖 mirror+file:///etc/apt/apt-mirrors.txt（azure 镜像，经常超时）
+          sudo tee /etc/apt/sources.list.d/ubuntu.sources > /dev/null <<'EOF'
+          Types: deb
+          URIs: https://archive.ubuntu.com/ubuntu/
+          Suites: noble noble-updates noble-backports
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+          Types: deb
+          URIs: https://security.ubuntu.com/ubuntu/
+          Suites: noble-security
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
           sudo rm -f /etc/apt/apt-mirrors.txt
-          grep -H '^URIs' /etc/apt/sources.list.d/*.sources || true
+          cat /etc/apt/sources.list.d/ubuntu.sources
 
       - name: 安装系统依赖
         run: |
