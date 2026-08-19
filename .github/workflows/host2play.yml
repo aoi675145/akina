@@ -31,12 +31,30 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: 修复 apt 源
+        run: |
+          sudo tee /etc/apt/sources.list.d/ubuntu.sources > /dev/null <<'EOF'
+          Types: deb
+          URIs: https://archive.ubuntu.com/ubuntu/
+          Suites: noble noble-updates noble-backports
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+          Types: deb
+          URIs: https://security.ubuntu.com/ubuntu/
+          Suites: noble-security
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
+          sudo rm -f /etc/apt/apt-mirrors.txt
+
       - name: 安装系统依赖
         run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb ffmpeg unzip curl
+          APT_OPTS="-o Acquire::Retries=3 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15"
+          sudo apt-get update $APT_OPTS
+          sudo apt-get install -y -o Acquire::Retries=3 xvfb ffmpeg unzip curl
           wget -q -O /tmp/google-chrome-stable_current_amd64.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo dpkg -i /tmp/google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y
+          sudo dpkg -i /tmp/google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y -o Acquire::Retries=3
 
       - name: 安装 Python 依赖
         run: |
