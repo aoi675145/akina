@@ -16,6 +16,8 @@ jobs:
   run-renew:
     name: 执行续期脚本
     runs-on: ubuntu-latest
+    # 整个 job 的兜底超时：任何一步卡死最多拖 20 分钟，避免空烧额度
+    timeout-minutes: 20
 
     steps:
       - name: 从私库拉取脚本
@@ -70,20 +72,34 @@ jobs:
           print('[INFO] Python 依赖校验通过')
           PY
 
-      - name: 启用 WARP 网络
-        uses: fscarmen/warp-on-actions@v1.3
-        with:
-          stack: dual
-          mode: client
+      - name: 启用 WARP 网络（wireguard 模式，替代官方 action）
+        # 官方 fscarmen/warp-on-actions 的 client 模式在 ubuntu-24.04 上会卡死：
+        # cloudflare-warp 客户端注册/连接阶段无响应，整个 job 挂到 6 小时上限。
+        # 这里改用 wg-quick 直连 WARP 隧道，不装 cloudflare-warp 客户端。
+        run: |
+          sudo apt-get install -y -o Acquire::Retries=3 --no-install-recommends \
+            net-tools iproute2 resolvconf dnsutils iptables wireguard-tools
+          LAN=$(ip route get 192.168.193.10 | grep -oP 'src \K\S+')
+          sudo tee /etc/wireguard/warp.conf > /dev/null <<EOF
+          [Interface]
+          PrivateKey = cKE7LmCF61IhqqABGhvJ44jWXp8fKymcMAEVAzbDF2k=
+          Address = 172.16.0.2/32
+          Address = fd01:5ca1:ab1e:823e:e094:eb1c:ff87:1fab/128
+          PostUp = ip -4 rule add from $LAN lookup main
+          PostDown = ip -4 rule delete from $LAN lookup main
+          DNS = 1.1.1.1,8.8.8.8
+          MTU = 1280
+
+          [Peer]
+          PublicKey = bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=
+          AllowedIPs = 0.0.0.0/0, ::/0
+          Endpoint = engage.cloudflareclient.com:2408
+          EOF
+          sudo wg-quick up warp
 
       - name: 修复 DNS
         run: |
-          sudo systemctl stop systemd-resolved 2>/dev/null || true
-          sudo systemctl disable systemd-resolved 2>/dev/null || true
-          sudo rm -f /etc/resolv.conf
-          echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 1.0.0.1" \
-            | sudo tee /etc/resolv.conf
-          sleep 2
+          sleep 3
           echo "[INFO] 当前出口 IP:"
           curl -s --max-time 10 https://api.ipify.org && echo
           echo "[INFO] WARP Trace:"
