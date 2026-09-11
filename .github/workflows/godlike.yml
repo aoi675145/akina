@@ -42,13 +42,13 @@ jobs:
           sudo tee /etc/apt/sources.list.d/ubuntu.sources > /dev/null <<'EOF'
           Types: deb
           URIs: http://azure.archive.ubuntu.com/ubuntu/
-          Suites: noble noble-updates noble-backports
+          Suites: noble noble-updates
           Components: main restricted universe multiverse
           Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 
           Types: deb
           URIs: http://archive.ubuntu.com/ubuntu/
-          Suites: noble noble-updates noble-backports
+          Suites: noble noble-updates
           Components: main restricted universe multiverse
           Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 
@@ -70,8 +70,9 @@ jobs:
 
       - name: 安装系统依赖
         run: |
-          # timeout 240：卡死的 update 最多拖 4 分钟就放弃重试一次，避免空烧时间
-          timeout 240 sudo apt-get update || timeout 240 sudo apt-get update
+          # 首次 update 只给 120s：慢源在 apt 里不会自己超时（单次 read 超时而已），
+          # 与其让它滴漏 4 分钟，不如快速放弃换一次全新连接，通常第二把就正常。
+          timeout 120 sudo apt-get update || timeout 240 sudo apt-get update
           sudo apt-get install -y xvfb ffmpeg unzip curl
           wget -q -O /tmp/google-chrome-stable_current_amd64.deb \
             https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
