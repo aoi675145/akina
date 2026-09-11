@@ -66,13 +66,12 @@ jobs:
           Acquire::https::Timeout "15";
           Acquire::http::Pipeline-Depth "0";
           EOF
-          cat /etc/apt/sources.list.d/ubuntu.sources
 
       - name: 安装系统依赖
         run: |
           # 首次 update 只给 120s：慢源在 apt 里不会自己超时（单次 read 超时而已），
           # 与其让它滴漏 4 分钟，不如快速放弃换一次全新连接，通常第二把就正常。
-          timeout 120 sudo apt-get update || timeout 240 sudo apt-get update
+          timeout 120 sudo apt-get update -qq || timeout 240 sudo apt-get update -qq
           sudo apt-get install -y xvfb ffmpeg unzip curl
           wget -q -O /tmp/google-chrome-stable_current_amd64.deb \
             https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
@@ -80,8 +79,8 @@ jobs:
 
       - name: 安装 Python 依赖
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install DrissionPage DataRecorder DownloadKit xvfbwrapper requests SpeechRecognition pydub
+          python -m pip install -q --upgrade pip
+          python -m pip install -q DrissionPage DataRecorder DownloadKit xvfbwrapper requests SpeechRecognition pydub
           python - <<'PY'
           import DataRecorder
           import DrissionPage
@@ -116,11 +115,12 @@ jobs:
       - name: 修复 DNS
         run: |
           sleep 3
-          echo "[INFO] 当前出口 IP:"
-          curl -s --max-time 10 https://api.ipify.org && echo
+          mask_ip() { sed -E 's/([0-9]+\.[0-9]+)\.[0-9]+\.[0-9]+/\1.**.**/g'; }
+          IP=$(curl -s --max-time 10 https://api.ipify.org | mask_ip)
+          echo "[INFO] 当前出口 IP: $IP"
           echo "[INFO] WARP Trace:"
           curl -s --max-time 10 https://www.cloudflare.com/cdn-cgi/trace \
-            | grep -E 'ip=|warp=|loc=' || true
+            | grep -E 'ip=|warp=|loc=' | mask_ip || true
 
       - name: 执行续订
         env:
