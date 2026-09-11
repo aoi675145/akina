@@ -36,28 +36,43 @@ jobs:
 
       - name: 修复 apt 源
         run: |
-          # 直接整体重写 ubuntu.sources 为官方 https 源（deb822 格式），
-          # 不再依赖 mirror+file:///etc/apt/apt-mirrors.txt（azure 镜像，经常超时）
+          # 保留 runner 自带的 azure 镜像做首选（走 http，不碰 apt https 方法里
+          # 会卡死的 TLS select 路径），archive.ubuntu.com 做备用，apt 自动 failover。
+          # apt 超时是"单次 read"超时，慢速源会一直滴漏不触发，所以统一加 timeout 包裹。
           sudo tee /etc/apt/sources.list.d/ubuntu.sources > /dev/null <<'EOF'
           Types: deb
-          URIs: https://archive.ubuntu.com/ubuntu/
+          URIs: http://azure.archive.ubuntu.com/ubuntu/
           Suites: noble noble-updates noble-backports
           Components: main restricted universe multiverse
           Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 
           Types: deb
-          URIs: https://security.ubuntu.com/ubuntu/
+          URIs: http://archive.ubuntu.com/ubuntu/
+          Suites: noble noble-updates noble-backports
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+          Types: deb
+          URIs: http://security.ubuntu.com/ubuntu/
           Suites: noble-security
           Components: main restricted universe multiverse
           Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
           EOF
           sudo rm -f /etc/apt/apt-mirrors.txt
+          # 与 runner-images 官方一致的超时/重试配置
+          sudo tee /etc/apt/apt.conf.d/99-timeouts > /dev/null <<'EOF'
+          Acquire::Retries "3";
+          Acquire::http::Timeout "15";
+          Acquire::https::Timeout "15";
+          Acquire::http::Pipeline-Depth "0";
+          EOF
           cat /etc/apt/sources.list.d/ubuntu.sources
 
       - name: 安装系统依赖
         run: |
-          sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15
-          sudo apt-get install -y -o Acquire::Retries=3 xvfb ffmpeg unzip curl
+          # timeout 240：卡死的 update 最多拖 4 分钟就放弃重试一次，避免空烧时间
+          timeout 240 sudo apt-get update || timeout 240 sudo apt-get update
+          sudo apt-get install -y xvfb ffmpeg unzip curl
           wget -q -O /tmp/google-chrome-stable_current_amd64.deb \
             https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo dpkg -i /tmp/google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y
