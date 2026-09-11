@@ -42,111 +42,14 @@ jobs:
           ffmpeg -version
           pip install -q seleniumbase requests pyvirtualdisplay
 
-      - name: 配置代理 
+      - name: 配置代理 (sing-box)
         env:
           Falix_PROXY_NODE: ${{ secrets.Falix_PROXY_NODE }}
         run: |
-          if [ -z "$Falix_PROXY_NODE" ]; then
-            echo "[INFO] 无代理配置，使用直连模式"
-            exit 0
-          fi
-          
-          echo "[INFO] 下载并配置 Xray-core (VLESS)"
-          wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -O xray.zip
-          unzip -q xray.zip xray
-          chmod +x xray
-          
-          # 解析 VLESS 链接并生成配置
-          python <<'PY'
-          import json
-          import os
-          import urllib.parse
-
-          link = os.environ.get("Falix_PROXY_NODE", "").strip()
-          if not link.startswith("vless://"):
-              print("ERROR: 不是有效的 VLESS 链接，请检查变量内容")
-              exit(1)
-
-          parsed = urllib.parse.urlparse(link)
-          uuid = parsed.username
-          host = parsed.hostname
-          port = int(parsed.port or 443)
-          params = dict(urllib.parse.parse_qsl(parsed.query))
-
-          outbound = {
-              "tag": "proxy",
-              "protocol": "vless",
-              "settings": {
-                  "vnext": [{
-                      "address": host,
-                      "port": port,
-                      "users": [{"id": uuid, "encryption": params.get("encryption", "none"), "flow": params.get("flow", "")}],
-                  }]
-              },
-              "streamSettings": {
-                  "network": params.get("type", "tcp"),
-                  "security": params.get("security", "none"),
-              },
-          }
-
-          if params.get("security") == "tls":
-              outbound["streamSettings"]["tlsSettings"] = {
-                  "serverName": params.get("sni", host),
-                  "fingerprint": params.get("fp", "chrome"),
-              }
-          elif params.get("security") == "reality":
-              outbound["streamSettings"]["realitySettings"] = {
-                  "serverName": params.get("sni", host),
-                  "publicKey": params.get("pbk", ""),
-                  "fingerprint": params.get("fp", "chrome"),
-                  "shortId": params.get("sid", ""),
-                  "spiderX": params.get("spx", ""),
-              }
-
-          if params.get("type") == "ws":
-              outbound["streamSettings"]["wsSettings"] = {
-                  "path": params.get("path", "/"),
-                  "headers": {"Host": params.get("host", host)},
-              }
-          elif params.get("type") == "grpc":
-              outbound["streamSettings"]["grpcSettings"] = {
-                  "serviceName": params.get("serviceName", ""),
-                  "multiMode": params.get("mode", "multi") != "gun",
-              }
-
-          config = {
-              "inbounds": [{
-                  "port": 1080,
-                  "listen": "127.0.0.1",
-                  "protocol": "http",
-                  "settings": {},
-              }],
-              "outbounds": [
-                  outbound,
-                  {"tag": "direct", "protocol": "freedom", "settings": {}},
-              ],
-              "routing": {
-                  "domainStrategy": "AsIs",
-                  "rules": [{
-                      "type": "field",
-                      "domain": [
-                          "domain:anyadx.live",
-                          "domain:googleadservices.com",
-                          "domain:googlesyndication.com",
-                          "domain:doubleclick.net",
-                      ],
-                      "outboundTag": "direct",
-                  }],
-              },
-          }
-
-          with open("config.json", "w") as f:
-              json.dump(config, f, indent=2)
-          PY
-          
-          ./xray -c config.json > /dev/null 2>&1 &
-          sleep 3
-          echo "[INFO] VLESS 代理已启动"
+          # 复用 Overnode 的 sing-box 代理脚本（支持 vless/vmess/trojan/hysteria2/tuic/anytls/ss/socks）
+          # 广告相关域名走直连，避免开机奖励广告经过代理
+          export DIRECT_DOMAINS="anyadx.live googleadservices.com googlesyndication.com doubleclick.net"
+          NODE_LINK="$Falix_PROXY_NODE" bash scripts/setup_proxy.sh.sh
 
       - name: 执行重启脚本
         id: falix_run
@@ -156,14 +59,15 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           Falix_PROXY_NODE: ${{ secrets.Falix_PROXY_NODE }}
         run: |
-          # 根据是否有 Falix_PROXY_NODE 设置代理
+          # sing-box 入站：SOCKS 127.0.0.1:1080 / HTTP 127.0.0.1:1081
+          # 浏览器和 requests 统一走 HTTP 入站（与脚本内的 PROXY_SERVER 兼容）
           if [ -n "$Falix_PROXY_NODE" ]; then
-            export PROXY_SERVER="http://127.0.0.1:1080"
+            export PROXY_SERVER="http://127.0.0.1:1081"
             echo "[INFO] 使用代理: $PROXY_SERVER"
           else
             echo "[INFO] 直连模式"
           fi
-          
+
           # 进入私库对应的目录并执行
           cd scripts/falix
           python main.py
