@@ -88,61 +88,28 @@ jobs:
           PY
 
       - name: 启用 WARP 网络
-        # 官方 fscarmen/warp-on-actions 的 client 模式在 ubuntu-24.04 上会卡死：
-        # cloudflare-warp 客户端注册/连接阶段无响应，整个 job 挂到 6 小时上限。
-        # 这里改用 wg-quick 直连 WARP 隧道，不装 cloudflare-warp 客户端。
-        # 注意：wg-quick up 只代表"隧道已创建"，握手可能失败；握手不通时全部
-        # 流量（含 DNS）都会进黑洞，所以必须用 latest-handshake 验证，
-        # 依次尝试 2408/4500/500 三个端口（2408 被 Azure 网络拦时走 IPsec 常用端口）。
-        run: |
-          sudo apt-get install -y -o Acquire::Retries=3 --no-install-recommends \
-            net-tools iproute2 resolvconf dnsutils iptables wireguard-tools
-          LAN=$(ip route get 192.168.193.10 | grep -oP 'src \K\S+')
-          start_warp() {
-            local port=$1
-            sudo wg-quick down warp 2>/dev/null || true
-            sudo tee /etc/wireguard/warp.conf > /dev/null <<EOF
-          [Interface]
-          PrivateKey = cKE7LmCF61IhqqABGhvJ44jWXp8fKymcMAEVAzbDF2k=
-          Address = 172.16.0.2/32
-          Address = fd01:5ca1:ab1e:823e:e094:eb1c:ff87:1fab/128
-          PostUp = ip -4 rule add from $LAN lookup main
-          PostDown = ip -4 rule delete from $LAN lookup main
-          DNS = 1.1.1.1,8.8.8.8
-          MTU = 1280
-
-          [Peer]
-          PublicKey = bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=
-          AllowedIPs = 0.0.0.0/0
-          AllowedIPs = ::/0
-          Endpoint = engage.cloudflareclient.com:$port
-          EOF
-            sudo wg-quick up warp 2>&1 | tail -2
-            # 最多等 20 秒，握手成功（latest-handshake 非 0）才算可用
-            for _ in $(seq 1 20); do
-              hs=$(sudo wg show warp latest-handshake 2>/dev/null | awk '{print $2}')
-              [ -n "$hs" ] && [ "$hs" != "0" ] && return 0
-              sleep 1
-            done
-            echo "[WARN] 端口 $port 握手超时"
-            return 1
-          }
-          if start_warp 2408 || start_warp 4500 || start_warp 500; then
-            echo "[INFO] WARP 隧道握手成功"
-          else
-            # 建不起来就彻底拆掉隧道回退直连：半死隧道会让所有流量进黑洞，
-            # 比没有 WARP 更糟（页面完全打不开、换 IP 也失败）
-            echo "[WARN] WARP 三个端口均握手失败，回退直连继续"
-            sudo wg-quick down warp 2>/dev/null || true
-          fi
+        # 恢复为 fscarmen 官方 action 的 client 模式（cloudflare-warp + warp+doh）。
+        # wg-quick 直连在这些 runner 上 UDP 2408/4500/500 全部握手失败，
+        # 半死隧道会把所有流量带进黑洞；client 模式自带多端口探测/回退，实测能连上。
+        # 加 5 分钟步骤超时 + 失败不阻断：万一安装/注册再卡住，回退直连继续跑。
+        uses: fscarmen/warp-on-actions@v1.3
+        with:
+          stack: dual
+          mode: client
+        timeout-minutes: 5
+        continue-on-error: true
 
       - name: 修复 DNS
         run: |
-          sleep 3
+          sudo systemctl stop systemd-resolved 2>/dev/null || true
+          sudo systemctl disable systemd-resolved 2>/dev/null || true
+          sudo rm -f /etc/resolv.conf
+          echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 1.0.0.1" \
+            | sudo tee /etc/resolv.conf
+          sleep 2
           mask_ip() { sed -E 's/([0-9]+\.[0-9]+)\.[0-9]+\.[0-9]+/\1.**.**/g'; }
-          echo "[INFO] WARP 状态: $(sudo wg show 2>/dev/null | head -1 || true)"
-          IP=$(curl -s --max-time 10 https://api.ipify.org | mask_ip)
-          echo "[INFO] 当前出口 IP: ${IP:-获取失败}"
+          echo "[INFO] WARP 状态: $(sudo warp-cli --accept-tos status 2>/dev/null || true)"
+          echo "[INFO] 当前出口 IP: $(curl -s --max-time 10 https://api.ipify.org | mask_ip || true)"
           echo "[INFO] WARP Trace:"
           curl -s --max-time 10 https://www.cloudflare.com/cdn-cgi/trace \
             | grep -E 'ip=|warp=|loc=' | mask_ip || true
