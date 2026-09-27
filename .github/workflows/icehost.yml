@@ -53,8 +53,8 @@ jobs:
 
           # 调用私库共享代理脚本：解析节点 -> 生成 sing-box 配置 -> 启动并验证，
           # 成功后写入 IS_PROXY / PROXY_SERVER 到 GITHUB_ENV
-          chmod +x private-scripts/scripts/setup_proxy.sh.sh
-          bash private-scripts/scripts/setup_proxy.sh.sh
+          chmod +x private-scripts/scripts/setup_proxy.sh
+          bash private-scripts/scripts/setup_proxy.sh
 
           source "$GITHUB_ENV"
           if [ "${IS_PROXY:-false}" != "true" ] || [ -z "${PROXY_SERVER:-}" ]; then

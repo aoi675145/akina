@@ -49,7 +49,7 @@ jobs:
           # 复用 Overnode 的 sing-box 代理脚本（支持 vless/vmess/trojan/hysteria2/tuic/anytls/ss/socks）
           # 广告相关域名走直连，避免开机奖励广告经过代理
           export DIRECT_DOMAINS="anyadx.live googleadservices.com googlesyndication.com doubleclick.net"
-          NODE_LINK="$Falix_PROXY_NODE" bash scripts/setup_proxy.sh.sh
+          NODE_LINK="$Falix_PROXY_NODE" bash scripts/setup_proxy.sh
 
       - name: 执行重启脚本
         id: falix_run

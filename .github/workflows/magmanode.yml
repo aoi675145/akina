@@ -19,7 +19,7 @@ jobs:
           path: private-repo
           sparse-checkout: |
             scripts/magama/main.py
-            scripts/setup_proxy.sh.sh
+            scripts/setup_proxy.sh
           sparse-checkout-cone-mode: false
 
       - name: 🐍 设置 Python
@@ -67,7 +67,7 @@ jobs:
             echo "❌ 未配置 MAGMA_PROXY，直连模式已禁用"
             exit 1
           fi
-          NODE_LINK="$MAGMA_PROXY" bash private-repo/scripts/setup_proxy.sh.sh
+          NODE_LINK="$MAGMA_PROXY" bash private-repo/scripts/setup_proxy.sh
 
       - name: 🚀 运行 Magma Python 脚本
         env:
