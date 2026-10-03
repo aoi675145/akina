@@ -1,9 +1,9 @@
 name: OPENCHUNK 续期
 
 on:
-  schedule:
-    - cron: "0 */6 * * *" # 北京时间 02/08/14/20 点；免费服务器 8 小时到期，6 小时续一次
   workflow_dispatch:
+  repository_dispatch:
+    types: [openchunk] # 外部触发：POST /repos/{owner}/{repo}/dispatches, event_type=openchunk
 
 jobs:
   renew:
