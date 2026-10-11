@@ -55,20 +55,12 @@ jobs:
           OPENCHUNK_SERVER: ${{ secrets.OPENCHUNK_SERVER }} # 留空自动获取全部服务器
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          CRON_JOB_API: ${{ secrets.CRON_JOB_API }} # "<api_key>,<job_id>"，用于写回下次运行时间
           IS_PROXY: ${{ env.IS_PROXY }}
           PROXY_SERVER: ${{ env.PROXY_SERVER }}
         run: |
           set -o pipefail
           python -u private-repo/scripts/openchunk/openchunk.py 2>&1 | tee renew.log
-
-      - name: 📤 上传调试截图
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: openchunk-screenshots
-          path: screenshots/
-          if-no-files-found: ignore
-          retention-days: 3
 
       - name: 🧹 清理代理进程和临时文件
         if: always()
