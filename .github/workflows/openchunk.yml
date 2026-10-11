@@ -42,6 +42,10 @@ jobs:
         env:
           OPENCHUNK_PROXY: ${{ secrets.OPENCHUNK_PROXY }}
         run: |
+          if [ -z "$OPENCHUNK_PROXY" ]; then
+            echo "::error::OPENCHUNK_PROXY 未配置（必填，本脚本必须走代理）"
+            exit 1
+          fi
           NODE_LINK="$OPENCHUNK_PROXY" bash private-repo/scripts/setup_proxy.sh
 
       - name: 🚀 运行续期脚本
