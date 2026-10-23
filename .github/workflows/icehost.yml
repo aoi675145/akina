@@ -38,7 +38,7 @@ jobs:
           sudo apt-get install -y xvfb xdotool
            
           python -m pip install --upgrade pip
-          pip install seleniumbase requests pyautogui python-xlib
+          pip install seleniumbase requests pyautogui python-xlib curl_cffi
           seleniumbase install chromedriver
 
       - name: 🛡️ 安装并启动代理
@@ -135,6 +135,31 @@ jobs:
       #     git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
       #     git pull --rebase origin main
       #     git push origin HEAD:main
+
+      - name: 💾 回写 cf_clearance（供下次直连用）
+        if: always()
+        env:
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: |
+          SRC="private-scripts/scripts/icehost/cf_clearance.txt"
+          if [ ! -s "$SRC" ]; then
+            echo "[SKIP] 本次没有拿到 cf_clearance"
+            exit 0
+          fi
+          rm -rf scripts-repo
+          git clone --depth 1 "https://x-access-token:${REPO_TOKEN}@github.com/aoi675145/scripts.git" scripts-repo
+          cd scripts-repo
+          mkdir -p scripts/icehost
+          cp "../$SRC" scripts/icehost/cf_clearance.txt
+          git add scripts/icehost/cf_clearance.txt
+          if git diff --cached --quiet; then
+            echo "[SKIP] cf_clearance 未变化"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(icehost): roll cf_clearance"
+          git push || echo "[WARN] push failed, next run will re-solve the WAF"
 
       - name: 🧹 清理 sing-box
         if: always()
