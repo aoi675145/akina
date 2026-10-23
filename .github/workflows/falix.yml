@@ -18,18 +18,18 @@ jobs:
       actions: write
 
     steps:
-      - name: 拉取代码
+      - name: 📥 拉取代码
         uses: actions/checkout@v4
         with:
           repository: 'aoi675145/scripts'  
           token: ${{ secrets.REPO_TOKEN }}
 
-      - name: 配置 Python
+      - name: 🐍 配置 Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: 安装依赖
+      - name: 📦 安装依赖
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y xz-utils fonts-noto-cjk fontconfig
@@ -42,7 +42,7 @@ jobs:
           ffmpeg -version
           pip install -q seleniumbase requests pyvirtualdisplay
 
-      - name: 配置代理 (sing-box)
+      - name: 🌐 配置代理 (sing-box)
         env:
           Falix_PROXY_NODE: ${{ secrets.Falix_PROXY_NODE }}
         run: |
@@ -51,7 +51,7 @@ jobs:
           export DIRECT_DOMAINS="anyadx.live googleadservices.com googlesyndication.com doubleclick.net"
           NODE_LINK="$Falix_PROXY_NODE" bash scripts/setup_proxy.sh
 
-      - name: 执行重启脚本
+      - name: 🚀 执行重启脚本
         id: falix_run
         env:
           FALIX: ${{ secrets.FALIX }}
@@ -72,7 +72,7 @@ jobs:
           cd scripts/falix
           python main.py
 
-      - name: 清理运行记录
+      - name: 🧹 清理运行记录
         if: always()
         uses: Mattraks/delete-workflow-runs@v2
         with:

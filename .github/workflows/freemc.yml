@@ -20,20 +20,20 @@ jobs:
       actions: write
 
     steps:
-      - name: 拉取私有仓库
+      - name: 📥 拉取私有仓库
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/scripts
           token: ${{ secrets.REPO_TOKEN }}
           path: .
 
-      - name: 配置 Python
+      - name: 🐍 配置 Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: 安装依赖
+      - name: 📦 安装依赖
         run: |
           if ! command -v xvfb-run >/dev/null || ! command -v unzip >/dev/null; then
             sudo apt-get update -qq
@@ -41,7 +41,7 @@ jobs:
           fi
           python -m pip install --disable-pip-version-check -q seleniumbase requests
 
-      - name: 安装 Xray
+      - name: 📦 安装 Xray
         run: |
           wget -q https://github.com/aoi675145/akina/releases/download/proxy/Xray-linux-64.zip
           mkdir -p xray-bin
@@ -49,7 +49,7 @@ jobs:
           chmod +x xray-bin/xray
           sudo mv xray-bin/xray /usr/local/bin/xray
 
-      - name: 构建 Xray 配置
+      - name: ⚙️ 构建 Xray 配置
         env:
           FREEMC_PROXY_NODE: ${{ secrets.FREEMC_PROXY_NODE }}
         run: |
@@ -204,7 +204,7 @@ jobs:
               json.dump(config, f, indent=2)
           PYEOF
 
-      - name: 启动代理
+      - name: 🌐 启动代理
         run: |
           nohup xray run -c xray-config.json > xray.log 2>&1 &
           sleep 3
@@ -228,7 +228,7 @@ jobs:
             exit 1
           fi
 
-      - name: 执行续订脚本
+      - name: 🚀 执行续订脚本
         id: freemc_run
         continue-on-error: true
         env:
@@ -240,7 +240,7 @@ jobs:
         run: |
           xvfb-run -a python scripts/freemc/main.py
 
-      - name: 失败后重开一次工作流
+      - name: ⚙️ 失败后重开一次工作流
         if: steps.freemc_run.outcome == 'failure' && github.event.inputs.retry != 'true'
         env:
           GH_TOKEN: ${{ secrets.REPO_TOKEN }}
@@ -251,7 +251,7 @@ jobs:
             -f retry=true
           exit 1
 
-      - name: 重试后仍失败则停止
+      - name: ⚙️ 重试后仍失败则停止
         if: steps.freemc_run.outcome == 'failure' && github.event.inputs.retry == 'true'
         run: |
           echo "[ERROR] FreeMcServer 第二轮仍未成功，已停止自动重试。"
@@ -266,7 +266,7 @@ jobs:
 #          retention-days: 7
 #          if-no-files-found: ignore
 
-      - name: 清理运行记录
+      - name: 🧹 清理运行记录
         if: always()
         continue-on-error: true
         uses: Mattraks/delete-workflow-runs@v2

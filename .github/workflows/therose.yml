@@ -11,15 +11,15 @@ jobs:
       actions: write
 
     steps:
-      - name: 安装 Python
+      - name: 📦 安装 Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: 安装依赖
+      - name: 📦 安装依赖
         run: pip install seleniumbase requests
 
-      - name: 安装 Chrome 和 UC 驱动
+      - name: 📦 安装 Chrome 和 UC 驱动
         run: |
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable xvfb
@@ -29,7 +29,7 @@ jobs:
           }
           echo "[INFO] UC 驱动已准备"
 
-      - name: 安装并启动代理
+      - name: 🌐 安装并启动代理
         env:
           PROXY_LINK: ${{ secrets.TheRose_Proxy }}
         run: |
@@ -147,7 +147,7 @@ jobs:
             echo "PROXY_SERVER=" >> "$GITHUB_ENV"
           fi
 
-      - name: 检查代理出口
+      - name: 🌐 检查代理出口
         run: |
           if [ -n "${PROXY_SERVER}" ]; then
             IP=$(curl -fsS --max-time 15 --proxy "${PROXY_SERVER}" https://api.ipify.org)
@@ -160,7 +160,7 @@ jobs:
             curl -sSI --connect-timeout 10 --max-time 30 https://client.therose.cloud/login | sed -n '1,8p' || echo "[WARN] HTTP 预检失败，将交由浏览器继续尝试"
           fi
 
-      - name: 下载私库脚本
+      - name: 📥 下载私库脚本
         env:
           GH_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
@@ -173,7 +173,7 @@ jobs:
             --output /tmp/therose.py
           test -s /tmp/therose.py
 
-      - name: 执行续期
+      - name: 🚀 执行续期
         env:
           TheRose: ${{ secrets.TheRose }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
@@ -181,7 +181,7 @@ jobs:
           PROXY_SERVER: ${{ env.PROXY_SERVER }}
         run: xvfb-run python /tmp/therose.py
 
-      - name: 清理运行记录
+      - name: 🧹 清理运行记录
         uses: Mattraks/delete-workflow-runs@v2
         with:
           token: ${{ secrets.REPO_TOKEN }}

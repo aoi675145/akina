@@ -15,19 +15,19 @@ jobs:
       actions: write
     
     steps:
-      - name: 拉取私有仓库代码
+      - name: 📥 拉取私有仓库代码
         uses: actions/checkout@v4
         with:
           repository: aoi675145/scripts
           token: ${{ secrets.REPO_TOKEN }}
           path: .
 
-      - name: 设置 Python 环境
+      - name: 🐍 设置 Python 环境
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
           
-      - name: 安装依赖包
+      - name: 📦 安装依赖包
         run: |
           echo "正在安装 Playwright..."
           pip install playwright
@@ -35,7 +35,7 @@ jobs:
           python -m playwright install firefox
           echo "依赖安装完成！"
           
-      - name: 执行唤醒脚本
+      - name: 🚀 执行唤醒脚本
         env:
           TARGET_URL: ${{ secrets.STREAMLIT_TARGET_URL }}
         run: |
@@ -47,7 +47,7 @@ jobs:
           python scripts/streamlit/Keep.py
           echo "唤醒任务执行完毕！"
 
-      - name: 清理历史运行记录
+      - name: 🧹 清理历史运行记录
         uses: Mattraks/delete-workflow-runs@v2
         with:
           token: ${{ secrets.REPO_TOKEN }}

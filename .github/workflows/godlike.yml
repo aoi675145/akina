@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 25
 
     steps:
-      - name: 从私库拉取脚本
+      - name: 📥 从私库拉取脚本
         env:
           REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
@@ -29,12 +29,12 @@ jobs:
             "https://raw.githubusercontent.com/aoi675145/scripts/main/scripts/godlike/renew.py"
           ls -la renew.py
 
-      - name: 配置 Python 环境
+      - name: 🐍 配置 Python 环境
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: 修复 apt 源
+      - name: 📦 修复 apt 源
         run: |
           # 保留 runner 自带的 azure 镜像做首选（走 http，不碰 apt https 方法里
           # 会卡死的 TLS select 路径），archive.ubuntu.com 做备用，apt 自动 failover。
@@ -67,7 +67,7 @@ jobs:
           Acquire::http::Pipeline-Depth "0";
           EOF
 
-      - name: 安装系统依赖
+      - name: 📦 安装系统依赖
         run: |
           # 首次 update 只给 120s：慢源在 apt 里不会自己超时（单次 read 超时而已），
           # 与其让它滴漏 4 分钟，不如快速放弃换一次全新连接，通常第二把就正常。
@@ -84,7 +84,7 @@ jobs:
             https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo dpkg -i /tmp/google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y
 
-      - name: 安装 Python 依赖
+      - name: 📦 安装 Python 依赖
         run: |
           python -m pip install -q --upgrade pip
           python -m pip install -q DrissionPage DataRecorder DownloadKit xvfbwrapper requests SpeechRecognition pydub
@@ -94,7 +94,7 @@ jobs:
           print('[INFO] Python 依赖校验通过')
           PY
 
-      - name: 启用 WARP 网络
+      - name: 🌐 启用 WARP 网络
         # 恢复为 fscarmen 官方 action 的 client 模式（cloudflare-warp + warp+doh）。
         # wg-quick 直连在这些 runner 上 UDP 2408/4500/500 全部握手失败，
         # 半死隧道会把所有流量带进黑洞；client 模式自带多端口探测/回退，实测能连上。
@@ -106,7 +106,7 @@ jobs:
         timeout-minutes: 5
         continue-on-error: true
 
-      - name: 修复 DNS
+      - name: ⚙️ 修复 DNS
         run: |
           sudo systemctl stop systemd-resolved 2>/dev/null || true
           sudo systemctl disable systemd-resolved 2>/dev/null || true
@@ -121,7 +121,7 @@ jobs:
           curl -s --max-time 10 https://www.cloudflare.com/cdn-cgi/trace \
             | grep -E 'ip=|warp=|loc=' | mask_ip || true
 
-      - name: 执行续订
+      - name: 🚀 执行续订
         env:
           GODLIKE_ID: ${{ secrets.GODLIKE_ID }}
           GODLIKE_ID_INPUT: ${{ github.event.inputs.accounts }}
@@ -130,7 +130,7 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: python -u renew.py
 
-      - name: 上传截图
+      - name: 📤 上传截图
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -139,7 +139,7 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-      - name: 清理历史运行记录
+      - name: 🧹 清理历史运行记录
         if: always()
         uses: Mattraks/delete-workflow-runs@v2
         with:

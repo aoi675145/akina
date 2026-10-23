@@ -167,7 +167,7 @@ jobs:
           pkill -f sing-box 2>/dev/null || true
           rm -f sing-box sing-box-config.json sing-box.log sing-box-*.tar.gz
 
-      - name: 清理运行记录
+      - name: 🧹 清理运行记录
         if: always()
         uses: Mattraks/delete-workflow-runs@v2
         with:
