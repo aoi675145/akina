@@ -136,7 +136,7 @@ jobs:
       #     git pull --rebase origin main
       #     git push origin HEAD:main
 
-      - name: 💾 回写 cf_clearance（供下次直连用）
+      - name: 💾 回写 cf_clearance
         if: always()
         env:
           REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
