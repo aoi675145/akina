@@ -17,7 +17,7 @@ jobs:
     name: 执行续期脚本
     runs-on: ubuntu-latest
     # 整个 job 的兜底超时：任何一步卡死最多拖 20 分钟，避免空烧额度
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: 从私库拉取脚本
@@ -72,7 +72,14 @@ jobs:
           # 首次 update 只给 120s：慢源在 apt 里不会自己超时（单次 read 超时而已），
           # 与其让它滴漏 4 分钟，不如快速放弃换一次全新连接，通常第二把就正常。
           timeout 120 sudo apt-get update -qq || timeout 240 sudo apt-get update -qq
-          sudo apt-get install -y xvfb ffmpeg unzip curl
+          # ffmpeg 不在列表里：godlike 脚本不用它，而 apt 的 ffmpeg 会拉进 100+ 个
+          # 多媒体依赖（libflite1 13MB / libplacebo 等），慢源下必超时。
+          # 真要压缩截图就用静态二进制，做法见 falix.yml。
+          sudo apt-get install -y \
+            -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=20 \
+            -o Acquire::https::Timeout=20 \
+            xvfb unzip curl
           wget -q -O /tmp/google-chrome-stable_current_amd64.deb \
             https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo dpkg -i /tmp/google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y
