@@ -72,14 +72,20 @@ jobs:
           # 首次 update 只给 120s：慢源在 apt 里不会自己超时（单次 read 超时而已），
           # 与其让它滴漏 4 分钟，不如快速放弃换一次全新连接，通常第二把就正常。
           timeout 120 sudo apt-get update -qq || timeout 240 sudo apt-get update -qq
-          # ffmpeg 不在列表里：godlike 脚本不用它，而 apt 的 ffmpeg 会拉进 100+ 个
-          # 多媒体依赖（libflite1 13MB / libplacebo 等），慢源下必超时。
-          # 真要压缩截图就用静态二进制，做法见 falix.yml。
+          # ffmpeg 用静态二进制（renew.py 音频验证码识别 pydub 转 wav 必需）；
+          # apt 版会拉进 100+ 个多媒体依赖（libflite1 13MB / libplacebo 等），
+          # 慢源下必超时，做法同 falix.yml。
           sudo apt-get install -y \
             -o Acquire::Retries=3 \
             -o Acquire::http::Timeout=20 \
             -o Acquire::https::Timeout=20 \
             xvfb unzip curl
+          curl -L -o /tmp/ffmpeg.tar.xz https://github.com/aoi675145/akina/releases/download/ffmpeg/ffmpeg-release-amd64-static.tar.xz
+          mkdir -p /tmp/ffmpeg-static
+          tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-static --strip-components=1
+          sudo ln -sf /tmp/ffmpeg-static/ffmpeg /usr/local/bin/ffmpeg
+          sudo ln -sf /tmp/ffmpeg-static/ffprobe /usr/local/bin/ffprobe
+          ffmpeg -version
           wget -q -O /tmp/google-chrome-stable_current_amd64.deb \
             https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo dpkg -i /tmp/google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y
