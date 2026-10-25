@@ -161,6 +161,31 @@ jobs:
           git commit -m "chore(icehost): roll cf_clearance"
           git push || echo "[WARN] push failed, next run will re-solve the WAF"
 
+      - name: 💾 回写续期状态（下次可续期时间）
+        if: always()
+        env:
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: |
+          SRC="private-scripts/scripts/icehost/state.json"
+          if [ ! -s "$SRC" ]; then
+            echo "[SKIP] 本次没有 state.json"
+            exit 0
+          fi
+          rm -rf state-repo
+          git clone --depth 1 "https://x-access-token:${REPO_TOKEN}@github.com/aoi675145/scripts.git" state-repo
+          cd state-repo
+          mkdir -p scripts/icehost
+          cp "../$SRC" scripts/icehost/state.json
+          git add scripts/icehost/state.json
+          if git diff --cached --quiet; then
+            echo "[SKIP] state.json 未变化"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(icehost): 更新下次可续期时间"
+          git push || echo "[WARN] push failed, 下次会重新计算"
+
       - name: 🧹 清理 sing-box
         if: always()
         run: |
