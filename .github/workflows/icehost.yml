@@ -1,6 +1,11 @@
 name: Icehost Auto Renew
 on:
   workflow_dispatch:
+    inputs:
+      force_browser:
+        description: '强制走浏览器（跳过直连 API），1=是'
+        required: false
+        default: '0'
 
 jobs:
   run_renewal:
@@ -68,6 +73,7 @@ jobs:
           Icehost: ${{ secrets.Icehost }}
           ICEHOST_COOKIE: ${{ secrets.ICEHOST_COOKIE }}
           Ice_PROXY_NODE: ${{ env.PROXY_SERVER }}
+          ICEHOST_FORCE_BROWSER: ${{ inputs.force_browser }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: |
