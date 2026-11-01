@@ -13,6 +13,7 @@ jobs:
   restart:
     name: 执行脚本
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     permissions:
       contents: read
       actions: write
@@ -29,10 +30,44 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 📦 安装依赖
+      - name: 📦 修复 apt 源
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends xz-utils fontconfig fonts-wqy-microhei
+          # 保留 runner 自带的 azure 镜像做首选（走 http，不碰 apt https 方法里
+          # 会卡死的 TLS select 路径），archive.ubuntu.com 做备用，apt 自动 failover。
+          # apt 超时是"单次 read"超时，慢速源会一直滴漏不触发，所以统一加 timeout 包裹。
+          sudo tee /etc/apt/sources.list.d/ubuntu.sources > /dev/null <<'EOF'
+          Types: deb
+          URIs: http://azure.archive.ubuntu.com/ubuntu/
+          Suites: noble noble-updates
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+          Types: deb
+          URIs: http://archive.ubuntu.com/ubuntu/
+          Suites: noble noble-updates
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+          Types: deb
+          URIs: http://security.ubuntu.com/ubuntu/
+          Suites: noble-security
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
+          sudo rm -f /etc/apt/apt-mirrors.txt
+          # 与 runner-images 官方一致的超时/重试配置
+          sudo tee /etc/apt/apt.conf.d/99-timeouts > /dev/null <<'EOF'
+          Acquire::Retries "3";
+          Acquire::http::Timeout "15";
+          Acquire::https::Timeout "15";
+          Acquire::http::Pipeline-Depth "0";
+          EOF
+
+      - name: 📦 安装依赖
+        timeout-minutes: 10
+        run: |
+          timeout 120 sudo apt-get update -qq || timeout 240 sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends xz-utils fontconfig fonts-wqy-microhei -o Acquire::Retries=3
           fc-cache -fv >/dev/null 2>&1 || true
           curl -L -o /tmp/ffmpeg.tar.xz https://github.com/aoi675145/akina/releases/download/ffmpeg/ffmpeg-release-amd64-static.tar.xz
           mkdir -p /tmp/ffmpeg-static
@@ -40,7 +75,7 @@ jobs:
           sudo ln -sf /tmp/ffmpeg-static/ffmpeg /usr/local/bin/ffmpeg
           sudo ln -sf /tmp/ffmpeg-static/ffprobe /usr/local/bin/ffprobe
           ffmpeg -version
-          pip install -q seleniumbase requests pyvirtualdisplay
+          pip install -q seleniumbase requests pyvirtualdisplay --retries 5 --timeout 60
 
       - name: 🌐 配置代理 (sing-box)
         env:
