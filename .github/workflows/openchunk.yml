@@ -9,7 +9,7 @@ jobs:
   renew:
     name: 执行续期
     runs-on: ubuntu-22.04
-    timeout-minutes: 25
+    timeout-minutes: 40
     permissions:
       contents: read
       actions: write
@@ -33,11 +33,44 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: 📦 安装依赖
+      - name: 📦 修复 apt 源
         run: |
+          # jammy 用 http 镜像（azure 首选），绕开 apt https 方法会卡死的 TLS select 路径；
+          # apt 的超时是"单次 read"超时，慢速源会滴漏不触发，统一 timeout+retries 包裹。
+          sudo tee /etc/apt/sources.list.d/ubuntu.sources > /dev/null <<'EOF'
+          Types: deb
+          URIs: http://azure.archive.ubuntu.com/ubuntu/
+          Suites: jammy jammy-updates
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+          Types: deb
+          URIs: http://archive.ubuntu.com/ubuntu/
+          Suites: jammy jammy-updates
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+          Types: deb
+          URIs: http://security.ubuntu.com/ubuntu/
+          Suites: jammy-security
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
+          sudo rm -f /etc/apt/apt-mirrors.txt
+          sudo tee /etc/apt/apt.conf.d/99-timeouts > /dev/null <<'EOF'
+          Acquire::Retries "3";
+          Acquire::http::Timeout "15";
+          Acquire::https::Timeout "15";
+          Acquire::http::Pipeline-Depth "0";
+          EOF
+
+      - name: 📦 安装依赖
+        timeout-minutes: 10
+        run: |
+          set -o pipefail
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends xvfb fontconfig fonts-wqy-microhei
-          pip install -q 'requests[socks]' seleniumbase
+          pip install --retries 5 --timeout 60 -q 'requests[socks]' seleniumbase
           seleniumbase install chromedriver
 
       - name: 🌐 设置代理 (sing-box)
