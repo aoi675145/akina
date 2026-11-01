@@ -57,6 +57,14 @@ jobs:
           Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
           EOF
           sudo rm -f /etc/apt/apt-mirrors.txt
+          # ubuntu-22.04 还在用旧版 sources.list（mirror+file:/etc/apt/apt-mirrors.txt 条目），
+          # 只删 mirrors.txt 不删这一行 apt 会报 "no longer has a Release file"
+          sudo tee /etc/apt/sources.list > /dev/null <<'EOF'
+          deb http://azure.archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse
+          deb http://azure.archive.ubuntu.com/ubuntu/ jammy-updates main restricted universe multiverse
+          deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse
+          EOF
+          sudo rm -f /etc/apt/sources.list.d/*.sources
           sudo tee /etc/apt/apt.conf.d/99-timeouts > /dev/null <<'EOF'
           Acquire::Retries "3";
           Acquire::http::Timeout "15";
