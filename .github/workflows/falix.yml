@@ -67,7 +67,7 @@ jobs:
         timeout-minutes: 10
         run: |
           timeout 120 sudo apt-get update -qq || timeout 240 sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends xz-utils fontconfig fonts-wqy-microhei -o Acquire::Retries=3
+          sudo apt-get install -y --no-install-recommends xz-utils fontconfig fonts-wqy-microhei -o Acquire::Retries=3 -o Acquire::http::Timeout=20
           fc-cache -fv >/dev/null 2>&1 || true
           curl -L -o /tmp/ffmpeg.tar.xz https://github.com/aoi675145/akina/releases/download/ffmpeg/ffmpeg-release-amd64-static.tar.xz
           mkdir -p /tmp/ffmpeg-static

@@ -68,9 +68,10 @@ jobs:
           missing=""
           command -v xvfb-run >/dev/null 2>&1 || missing="$missing xvfb"
           command -v unzip >/dev/null 2>&1 || missing="$missing unzip"
+          command -v xauth >/dev/null 2>&1 || missing="$missing xauth"
           if [ -n "$missing" ]; then
             timeout 120 sudo apt-get update -qq || timeout 240 sudo apt-get update -qq
-            sudo apt-get install -y $missing -o Acquire::Retries=3
+            sudo apt-get install -y --no-install-recommends $missing -o Acquire::Retries=3 -o Acquire::http::Timeout=20
           else
             echo "[INFO] 系统依赖已存在，跳过 apt 安装"
           fi

@@ -77,7 +77,7 @@ jobs:
         run: |
           set -o pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends xvfb fontconfig fonts-wqy-microhei
+          sudo apt-get install -y --no-install-recommends xvfb fontconfig fonts-wqy-microhei -o Acquire::http::Timeout=20
           pip install --retries 5 --timeout 60 -q 'requests[socks]' seleniumbase
           seleniumbase install chromedriver
 

@@ -72,7 +72,7 @@ jobs:
         run: |
           if ! command -v xvfb-run >/dev/null || ! command -v unzip >/dev/null; then
             timeout 120 sudo apt-get update -qq || timeout 240 sudo apt-get update -qq
-            sudo apt-get install -y --no-install-recommends xvfb unzip -o Acquire::Retries=3
+            sudo apt-get install -y --no-install-recommends xvfb xauth unzip -o Acquire::Retries=3 -o Acquire::http::Timeout=20
           fi
           python -m pip install --disable-pip-version-check -q seleniumbase requests --retries 5 --timeout 60
 

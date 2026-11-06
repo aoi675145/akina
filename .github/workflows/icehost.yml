@@ -40,7 +40,7 @@ jobs:
           sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g; s|https://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources
 
           sudo apt-get update
-          sudo apt-get install -y xvfb xdotool
+          sudo apt-get install -y --no-install-recommends xvfb xauth xdotool -o Acquire::http::Timeout=20
            
           python -m pip install --upgrade pip
           pip install seleniumbase requests pyautogui python-xlib curl_cffi

@@ -75,7 +75,7 @@ jobs:
           # ffmpeg 用静态二进制（renew.py 音频验证码识别 pydub 转 wav 必需）；
           # apt 版会拉进 100+ 个多媒体依赖（libflite1 13MB / libplacebo 等），
           # 慢源下必超时，做法同 falix.yml。
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
             -o Acquire::Retries=3 \
             -o Acquire::http::Timeout=20 \
             -o Acquire::https::Timeout=20 \

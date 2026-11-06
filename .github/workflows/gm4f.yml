@@ -69,7 +69,7 @@ jobs:
         timeout-minutes: 10
         run: |
           timeout 120 sudo apt-get update -qq || timeout 240 sudo apt-get update -qq
-          sudo apt-get install -y xvfb curl unzip xdotool -o Acquire::Retries=3
+          sudo apt-get install -y --no-install-recommends xvfb xauth curl unzip xdotool -o Acquire::Retries=3 -o Acquire::http::Timeout=20
           wget -q -O /tmp/google-chrome-stable_current_amd64.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo dpkg -i /tmp/google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y
 

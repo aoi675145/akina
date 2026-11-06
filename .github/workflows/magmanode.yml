@@ -5,7 +5,7 @@ on:
 jobs:
   Restart:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     permissions:
       actions: write
       contents: write
@@ -60,16 +60,25 @@ jobs:
           Acquire::http::Pipeline-Depth "0";
           EOF
 
-      - name: 📦 安装底层依赖与浏览器
-        timeout-minutes: 10
+      - name: 📦 安装底层依赖（apt）
+        timeout-minutes: 8
         run: |
-          # 【核心】安装 xdotool(用于物理点击) 和 xvfb(虚拟屏幕)
+          # 只装真正需要的：xdotool（物理点击）。xvfb 通常已在 runner 镜像里。
+          # 不装 scrot / python3-xlib：scrot 会连带拽进 librsvg→ghostscript 一整串
+          # （25MB/26 包，慢源上必超时），而脚本截图走 seleniumbase 自带能力；
+          # python3-xlib 是 apt 系统包，setup-python 的解释器 import 不到，
+          # pyautogui 真正要的是 pip 的 python-xlib（见下一步）。
           timeout 120 sudo apt-get update -qq || timeout 240 sudo apt-get update -qq
-          sudo apt-get install -y xvfb xdotool wget unzip curl scrot python3-xlib -o Acquire::Retries=3
+          sudo apt-get install -y --no-install-recommends \
+            -o Acquire::Retries=3 -o Acquire::http::Timeout=20 \
+            xvfb xdotool xauth
 
-          # 安装 SeleniumBase 并初始化 Chrome（requests[socks] 用于走 socks5 代理推送 TG）
+      - name: 📦 安装 Python 依赖与浏览器
+        timeout-minutes: 8
+        run: |
+          # requests[socks] 用于走 socks5 代理推送 TG；python-xlib 是 pyautogui 在 X11 下的真实依赖
           python -m pip install --upgrade pip --retries 5 --timeout 60
-          pip install seleniumbase 'requests[socks]' pyautogui --retries 5 --timeout 60
+          pip install seleniumbase 'requests[socks]' pyautogui python-xlib --retries 5 --timeout 60
           seleniumbase install chromedriver
 
 
