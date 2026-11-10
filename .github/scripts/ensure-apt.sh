@@ -10,6 +10,11 @@
 #   bash ensure-apt.sh --need "Xvfb xdotool" --pkgs "xvfb xdotool"
 #   bash ensure-apt.sh --need "Xvfb" --need-cmd 'fc-list | grep -qi wqy' \
 #        --pkgs "xvfb fonts-wqy-microhei"
+#   bash ensure-apt.sh --need-pkg "libnss3 libxss1 xvfb" --pkgs "libnss3 libxss1 xvfb"
+#
+#   --need    检查 PATH 上的二进制（command -v）
+#   --need-pkg 检查 apt 包是否已装（dpkg-query），适合没有同名二进制的库/字体包
+#   --need-cmd 检查任意 shell 表达式
 #
 # 规则：
 #   1. --need 的二进制全在、--need-cmd 全通过 → 完全不碰 apt，打印一行 INFO 走人
@@ -20,6 +25,7 @@
 set -uo pipefail
 
 NEED=""
+NEED_PKGS=""
 PKGS=""
 TIME_LIMITS="90 120"
 NEED_CMDS=()
@@ -27,6 +33,7 @@ NEED_CMDS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --need)      NEED="${2:-}";  shift 2 ;;
+    --need-pkg)  NEED_PKGS="${2:-}"; shift 2 ;;
     --need-cmd)  NEED_CMDS+=("${2:-}"); shift 2 ;;
     --pkgs)      PKGS="${2:-}";  shift 2 ;;
     --timeouts)  TIME_LIMITS="${2:-}"; shift 2 ;;
@@ -37,9 +44,12 @@ done
 
 # 返回当前缺失项（二进制名 / cmd:<表达式>），全部满足则输出空
 check() {
-  local b c out=""
+  local b pk c out=""
   for b in $NEED; do
     command -v "$b" >/dev/null 2>&1 || out="$out $b"
+  done
+  for pk in $NEED_PKGS; do
+    dpkg-query -W -f='${Status}' "$pk" 2>/dev/null | grep -q "install ok installed" || out="$out pkg:$pk"
   done
   for c in ${NEED_CMDS[@]+"${NEED_CMDS[@]}"}; do
     [ -n "$c" ] || continue
@@ -50,7 +60,7 @@ check() {
 
 miss="$(check)"
 if [ -z "$miss" ]; then
-  echo "[INFO] 系统依赖已由镜像满足，跳过 apt（need: ${NEED:-无}）"
+  echo "[INFO] 系统依赖已由镜像满足，跳过 apt（need: ${NEED:-无}${NEED_PKGS:+ / pkg: $NEED_PKGS}）"
   exit 0
 fi
 
@@ -87,7 +97,7 @@ fi
 
 miss="$(check)"
 if [ -n "$miss" ]; then
-  echo "::error::依赖仍然缺失:[${miss}]（apt 不通且镜像未自带）"
+  echo "::error::依赖仍然缺失:[${miss}]（apt 装完仍缺，检查包名或源）"
   exit 1
 fi
 echo "[INFO] 系统依赖自检通过"
