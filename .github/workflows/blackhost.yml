@@ -54,7 +54,7 @@ jobs:
       - name: 📦 安装系统与 Python 依赖
         timeout-minutes: 10
         run: |
-          # google-chrome / xvfb / jq 镜像自带；只补中文字体（截图给 TG 看时中文标题不糊）
+          # google-chrome / xvfb / jq 镜像自带；xdotool 兜底点击 + 中文字体
           curl -fsSL --max-time 30 -o /tmp/ensure-apt.sh \
             https://raw.githubusercontent.com/aoi675145/akina/main/.github/scripts/ensure-apt.sh \
             || echo "::warning::ensure-apt.sh 拉取失败，依赖交给镜像自带"
@@ -62,10 +62,9 @@ jobs:
             bash /tmp/ensure-apt.sh \
               --need "Xvfb jq google-chrome" \
               --need-cmd 'fc-list 2>/dev/null | grep -qi wenquanyi' \
-              --pkgs "xvfb fonts-wqy-microhei jq"
+              --pkgs "xvfb fonts-wqy-microhei jq xdotool"
           fi
-          pip install -q patchright "requests[socks]" --retries 5 --timeout 60
-          python -m patchright install chromium >/dev/null 2>&1 || echo "::warning::patchright chromium 安装失败，运行时回退系统 Chrome"
+          pip install -q seleniumbase "requests[socks]" pyautogui --retries 5 --timeout 60
 
       - name: 🌐 设置代理 (sing-box)
         env:
