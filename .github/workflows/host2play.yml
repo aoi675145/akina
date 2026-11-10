@@ -52,11 +52,24 @@ jobs:
       - name: 📦 安装系统依赖
         timeout-minutes: 10
         run: |
-          APT_OPTS="-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20"
-          timeout 120 sudo apt-get update -qq || timeout 240 sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends $APT_OPTS xvfb unzip curl
-          wget -q -O /tmp/google-chrome-stable_current_amd64.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo dpkg -i /tmp/google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y $APT_OPTS
+          # 系统包按需安装：ubuntu-24.04 镜像自带 xvfb/xauth/unzip/curl/wget/jq/Chrome，
+          # 真缺才动 apt，源不可达快速放弃（逻辑见 .github/scripts/ensure-apt.sh）
+          curl -fsSL --max-time 30 -o /tmp/ensure-apt.sh \
+            https://raw.githubusercontent.com/aoi675145/akina/main/.github/scripts/ensure-apt.sh \
+            || echo "::warning::ensure-apt.sh 拉取失败，依赖交给镜像自带"
+          if [ -s /tmp/ensure-apt.sh ]; then
+            bash /tmp/ensure-apt.sh --need "Xvfb unzip curl" --pkgs "xvfb unzip curl"
+          fi
+          # Chrome：镜像自带（google-chrome 156.x），缺了才下 deb
+          if ! command -v google-chrome >/dev/null 2>&1; then
+            echo "::warning::未找到 google-chrome，下载 deb 安装"
+            curl -fL --retry 3 --retry-delay 2 --retry-all-errors --max-time 240 \
+              -o /tmp/chrome.deb \
+              https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            sudo dpkg -i /tmp/chrome.deb || sudo apt-get install -f -y || true
+          else
+            echo "[INFO] 镜像自带 Chrome: $(google-chrome --version 2>/dev/null || echo unknown)"
+          fi
 
       - name: 📦 安装 Python 依赖
         run: |

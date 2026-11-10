@@ -65,15 +65,13 @@ jobs:
       - name: 📦 安装系统依赖
         timeout-minutes: 10
         run: |
-          missing=""
-          command -v xvfb-run >/dev/null 2>&1 || missing="$missing xvfb"
-          command -v unzip >/dev/null 2>&1 || missing="$missing unzip"
-          command -v xauth >/dev/null 2>&1 || missing="$missing xauth"
-          if [ -n "$missing" ]; then
-            timeout 120 sudo apt-get update -qq || timeout 240 sudo apt-get update -qq
-            sudo apt-get install -y --no-install-recommends $missing -o Acquire::Retries=3 -o Acquire::http::Timeout=20
-          else
-            echo "[INFO] 系统依赖已存在，跳过 apt 安装"
+          # 系统包按需安装：ubuntu-24.04 镜像自带 xvfb/xauth/unzip/curl/wget/jq/Chrome，
+          # 真缺才动 apt，源不可达快速放弃（逻辑见 .github/scripts/ensure-apt.sh）
+          curl -fsSL --max-time 30 -o /tmp/ensure-apt.sh \
+            https://raw.githubusercontent.com/aoi675145/akina/main/.github/scripts/ensure-apt.sh \
+            || echo "::warning::ensure-apt.sh 拉取失败，依赖交给镜像自带"
+          if [ -s /tmp/ensure-apt.sh ]; then
+            bash /tmp/ensure-apt.sh --need "xvfb-run unzip xauth" --pkgs "xvfb unzip xauth"
           fi
 
       - name: 🌐 安装并测试代理

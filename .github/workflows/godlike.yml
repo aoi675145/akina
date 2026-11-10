@@ -69,26 +69,45 @@ jobs:
 
       - name: 📦 安装系统依赖
         run: |
-          # 首次 update 只给 120s：慢源在 apt 里不会自己超时（单次 read 超时而已），
-          # 与其让它滴漏 4 分钟，不如快速放弃换一次全新连接，通常第二把就正常。
-          timeout 120 sudo apt-get update -qq || timeout 240 sudo apt-get update -qq
+          # 关键前提：ubuntu-24.04 镜像自带 xvfb / unzip / curl / wget / Google Chrome，
+          # 依赖装不装由 ensure-apt.sh 按实际情况决定；apt 不通也不会把 job 拖死
+          # （2026-11-10 02:30 那次就是 120s+240s 两把 apt 超时 → exit 124 → 后续全 skipped）。
+          curl -fsSL --max-time 30 -o /tmp/ensure-apt.sh \
+            https://raw.githubusercontent.com/aoi675145/akina/main/.github/scripts/ensure-apt.sh \
+            || echo "::warning::ensure-apt.sh 拉取失败，依赖交给镜像自带"
+          if [ -s /tmp/ensure-apt.sh ]; then
+            bash /tmp/ensure-apt.sh --need "Xvfb unzip curl wget" --pkgs "xvfb unzip curl wget"
+          fi
+
           # ffmpeg 用静态二进制（renew.py 音频验证码识别 pydub 转 wav 必需）；
-          # apt 版会拉进 100+ 个多媒体依赖（libflite1 13MB / libplacebo 等），
-          # 慢源下必超时，做法同 falix.yml。
-          sudo apt-get install -y --no-install-recommends \
-            -o Acquire::Retries=3 \
-            -o Acquire::http::Timeout=20 \
-            -o Acquire::https::Timeout=20 \
-            xvfb unzip curl
-          curl -L -o /tmp/ffmpeg.tar.xz https://github.com/aoi675145/akina/releases/download/ffmpeg/ffmpeg-release-amd64-static.tar.xz
-          mkdir -p /tmp/ffmpeg-static
-          tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-static --strip-components=1
-          sudo ln -sf /tmp/ffmpeg-static/ffmpeg /usr/local/bin/ffmpeg
-          sudo ln -sf /tmp/ffmpeg-static/ffprobe /usr/local/bin/ffprobe
-          ffmpeg -version
-          wget -q -O /tmp/google-chrome-stable_current_amd64.deb \
-            https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo dpkg -i /tmp/google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y
+          # apt 版会拉进 100+ 个多媒体依赖，慢源下必超时，做法同 falix.yml。
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            curl -fL --retry 3 --retry-delay 2 --retry-all-errors --max-time 180 \
+              -o /tmp/ffmpeg.tar.xz \
+              https://github.com/aoi675145/akina/releases/download/ffmpeg/ffmpeg-release-amd64-static.tar.xz
+            mkdir -p /tmp/ffmpeg-static
+            tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-static --strip-components=1
+            sudo ln -sf /tmp/ffmpeg-static/ffmpeg /usr/local/bin/ffmpeg
+            sudo ln -sf /tmp/ffmpeg-static/ffprobe /usr/local/bin/ffprobe
+          fi
+          ffmpeg -version | head -1
+
+          # Chrome 同理：镜像自带 156.x，缺了才装。
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "[INFO] 镜像自带 Chrome: $(google-chrome --version 2>/dev/null || echo unknown)"
+          else
+            echo "::warning::未找到 google-chrome，下载 deb 安装"
+            curl -fL --retry 3 --retry-delay 2 --retry-all-errors --max-time 240 \
+              -o /tmp/chrome.deb \
+              https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            sudo dpkg -i /tmp/chrome.deb || sudo apt-get install -f -y || true
+          fi
+
+          # 依赖自检：缺什么直接点名，别让后面的浏览器步骤报天书
+          for c in Xvfb ffmpeg google-chrome; do
+            command -v "$c" >/dev/null 2>&1 || { echo "::error::依赖缺失: $c"; exit 1; }
+          done
+          echo "[INFO] 系统依赖自检通过"
 
       - name: 📦 安装 Python 依赖
         run: |

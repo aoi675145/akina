@@ -66,15 +66,28 @@ jobs:
       - name: 📦 安装依赖
         timeout-minutes: 10
         run: |
-          timeout 120 sudo apt-get update -qq || timeout 240 sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends xz-utils fontconfig fonts-wqy-microhei -o Acquire::Retries=3 -o Acquire::http::Timeout=20
+          # 系统包按需安装：ubuntu-24.04 镜像自带 xvfb/xauth/unzip/curl/wget/jq/Chrome，
+          # 真缺才动 apt，源不可达快速放弃（逻辑见 .github/scripts/ensure-apt.sh）
+          curl -fsSL --max-time 30 -o /tmp/ensure-apt.sh \
+            https://raw.githubusercontent.com/aoi675145/akina/main/.github/scripts/ensure-apt.sh \
+            || echo "::warning::ensure-apt.sh 拉取失败，依赖交给镜像自带"
+          if [ -s /tmp/ensure-apt.sh ]; then
+            bash /tmp/ensure-apt.sh --need "xz fc-cache" \
+              --need-cmd 'fc-list 2>/dev/null | grep -qi wenquanyi' \
+              --pkgs "xz-utils fontconfig fonts-wqy-microhei"
+          fi
           fc-cache -fv >/dev/null 2>&1 || true
-          curl -L -o /tmp/ffmpeg.tar.xz https://github.com/aoi675145/akina/releases/download/ffmpeg/ffmpeg-release-amd64-static.tar.xz
-          mkdir -p /tmp/ffmpeg-static
-          tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-static --strip-components=1
-          sudo ln -sf /tmp/ffmpeg-static/ffmpeg /usr/local/bin/ffmpeg
-          sudo ln -sf /tmp/ffmpeg-static/ffprobe /usr/local/bin/ffprobe
-          ffmpeg -version
+          # ffmpeg 用静态二进制（音频验证码 pydub 转 wav 必需），apt 版会拽进 100+ 多媒体依赖
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            curl -fL --retry 3 --retry-delay 2 --retry-all-errors --max-time 180 \
+              -o /tmp/ffmpeg.tar.xz \
+              https://github.com/aoi675145/akina/releases/download/ffmpeg/ffmpeg-release-amd64-static.tar.xz
+            mkdir -p /tmp/ffmpeg-static
+            tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-static --strip-components=1
+            sudo ln -sf /tmp/ffmpeg-static/ffmpeg /usr/local/bin/ffmpeg
+            sudo ln -sf /tmp/ffmpeg-static/ffprobe /usr/local/bin/ffprobe
+          fi
+          ffmpeg -version | head -1
           pip install -q seleniumbase requests pyvirtualdisplay --retries 5 --timeout 60
 
       - name: 🌐 配置代理 (sing-box)
