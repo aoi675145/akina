@@ -32,36 +32,44 @@ jobs:
 
       - name: 📦 修复 apt 源
         run: |
-          # 保留 runner 自带的 azure 镜像做首选（走 http，不碰 apt https 方法里
-          # 会卡死的 TLS select 路径），archive.ubuntu.com 做备用，apt 自动 failover。
-          # apt 超时是"单次 read"超时，慢速源会一直滴漏不触发，所以统一加 timeout 包裹。
-          sudo tee /etc/apt/sources.list.d/ubuntu.sources > /dev/null <<'EOF'
+          # 幂等修源：先清空所有源文件与旧索引，再写一份直连 https 源。
+          # 坑1：runner 镜像的 ubuntu.sources 指向 mirror+file:/etc/apt/apt-mirrors.txt，
+          #      只删 mirrorlist 不换源 → 每个 repo 秒报 "no longer has a Release file"，
+          #      45s/60s 的 timeout 包裹全成摆设（日志里连续三条 warning 各只花 1 秒）。
+          # 坑2：不清 /var/lib/apt/lists，apt 仍按上次记录的 mirror+file: 记账，
+          #      报错里出现的是旧源名，最容易误判成「新源没生效」。
+          . /etc/os-release
+          CODENAME="${VERSION_CODENAME:-noble}"
+          sudo rm -f /etc/apt/sources.list
+          sudo rm -f /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list
+          sudo tee /etc/apt/sources.list.d/ubuntu.sources > /dev/null <<EOF
           Types: deb
-          URIs: http://azure.archive.ubuntu.com/ubuntu/
-          Suites: noble noble-updates
+          URIs: https://archive.ubuntu.com/ubuntu/
+          Suites: ${CODENAME} ${CODENAME}-updates ${CODENAME}-backports
           Components: main restricted universe multiverse
           Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 
           Types: deb
-          URIs: http://archive.ubuntu.com/ubuntu/
-          Suites: noble noble-updates
-          Components: main restricted universe multiverse
-          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
-
-          Types: deb
-          URIs: http://security.ubuntu.com/ubuntu/
-          Suites: noble-security
+          URIs: https://security.ubuntu.com/ubuntu/
+          Suites: ${CODENAME}-security
           Components: main restricted universe multiverse
           Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
           EOF
           sudo rm -f /etc/apt/apt-mirrors.txt
-          # 与 runner-images 官方一致的超时/重试配置
           sudo tee /etc/apt/apt.conf.d/99-timeouts > /dev/null <<'EOF'
           Acquire::Retries "3";
           Acquire::http::Timeout "15";
           Acquire::https::Timeout "15";
           Acquire::http::Pipeline-Depth "0";
           EOF
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo apt-get clean
+          echo "=== 生效的源"
+          grep -hE '^(Types|URIs|Suites):' /etc/apt/sources.list.d/*.sources || true
+          echo "=== 生效的 acquire 配置"
+          apt-config dump Acquire::Retries Acquire::http::Timeout || true
+          timeout 90 sudo apt-get update -qq -o Acquire::ForceIPv4=true \
+            || echo "::warning::apt-get update 未完全成功，交后续 ensure-apt.sh 兜底"
 
       - name: 📦 安装依赖
         timeout-minutes: 10
@@ -74,8 +82,23 @@ jobs:
           if [ -s /tmp/ensure-apt.sh ]; then
             bash /tmp/ensure-apt.sh --need "xz fc-cache" \
               --need-cmd 'fc-list 2>/dev/null | grep -qi wenquanyi' \
-              --pkgs "xz-utils fontconfig fonts-wqy-microhei"
+              --pkgs "xz-utils fontconfig"
           fi
+          # 中文字体不走 apt：直接解包官方 deb（绕过源/索引，apt 再烂也装得上）
+          if ! fc-list 2>/dev/null | grep -qi wenquanyi; then
+            if curl -fL --retry 3 --retry-delay 2 --max-time 120 -o /tmp/wqy.deb \
+                 https://archive.ubuntu.com/ubuntu/pool/universe/f/fonts-wqy-microhei/fonts-wqy-microhei_0.2.0-beta-3.1_all.deb; then
+              rm -rf /tmp/wqy && dpkg -x /tmp/wqy.deb /tmp/wqy
+              sudo mkdir -p /usr/share/fonts/truetype/wqy
+              sudo cp -r /tmp/wqy/usr/share/fonts/truetype/wqy/. /usr/share/fonts/truetype/wqy/
+              sudo fc-cache -f >/dev/null 2>&1 || true
+            else
+              echo "::warning::wqy deb 下载失败（archive.ubuntu.com 不可达）"
+            fi
+          fi
+          fc-list 2>/dev/null | grep -qi wenquanyi \
+            || { echo "::error::中文字体仍未装上：检查 archive.ubuntu.com 可达性或 deb 版本号"; exit 1; }
+
           fc-cache -fv >/dev/null 2>&1 || true
           # ffmpeg 用静态二进制（音频验证码 pydub 转 wav 必需），apt 版会拽进 100+ 多媒体依赖
           if ! command -v ffmpeg >/dev/null 2>&1; then

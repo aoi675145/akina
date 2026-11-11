@@ -124,6 +124,16 @@ prefer_https_sources() {
 }
 
 _fix_one() {
+  # 关键：mirror+file: 这类源靠 /etc/apt/apt-mirrors.txt 做 failover，一旦那个 mirrorlist
+  # 被删/不可读，整个 repo 立刻 "no longer has a Release file"（秒失败，不是超时）。
+  # 而且 prefer_https_sources 会把 http 改成 https，之后下面三条正则一个都匹配不上
+  # （第三条只认 http://），于是打「没有找到可替换的源」然后硬装 → 必挂。
+  # 所以：遇到 mirror+file: / 已是 https / 匹配不到任何已知写法，一律整份重写。
+  if grep -q 'mirror+file:' "$1" 2>/dev/null; then
+    _rewrite_sources "$1"
+    FIXED=$((FIXED + 1))
+    return 0
+  fi
   grep -qE 'azure\.archive\.ubuntu\.com|security\.ubuntu\.com|http://archive\.ubuntu\.com' "$1" 2>/dev/null || return 0
   if sudo sed -i -E \
        -e 's#https?://azure\.archive\.ubuntu\.com/ubuntu/?#https://archive.ubuntu.com/ubuntu/#g' \
@@ -134,14 +144,54 @@ _fix_one() {
   fi
 }
 
-# 把 azure / security / http archive 统一换成官方 https archive
+# 整份重写一个源文件：.sources 写 deb822，.list 写单行 deb
+_rewrite_sources() {
+  local f="$1" cn
+  cn=$(. /etc/os-release 2>/dev/null && echo "${VERSION_CODENAME:-noble}")
+  cn="${cn:-noble}"
+  case "$f" in
+    *.sources)
+      sudo tee "$f" > /dev/null <<SRC
+Types: deb
+URIs: https://archive.ubuntu.com/ubuntu/
+Suites: ${cn} ${cn}-updates ${cn}-backports
+Components: main restricted universe multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+Types: deb
+URIs: https://security.ubuntu.com/ubuntu/
+Suites: ${cn}-security
+Components: main restricted universe multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+SRC
+      ;;
+    *)
+      sudo tee "$f" > /dev/null <<SRC
+deb https://archive.ubuntu.com/ubuntu/ ${cn} main restricted universe multiverse
+deb https://archive.ubuntu.com/ubuntu/ ${cn}-updates main restricted universe multiverse
+deb https://archive.ubuntu.com/ubuntu/ ${cn}-backports main restricted universe multiverse
+deb https://security.ubuntu.com/ubuntu/ ${cn}-security main restricted universe multiverse
+SRC
+      ;;
+  esac
+  # 源已改成直连，mirrorlist 才能安全删除；旧索引也必须清，否则 apt 仍按旧 repo 记账
+  sudo rm -f /etc/apt/apt-mirrors.txt || true
+  sudo rm -rf /var/lib/apt/lists/* || true
+  echo "[INFO] 已整份重写源文件: $f（${cn}, https://archive.ubuntu.com）"
+}
+
+# 把 azure / security / http archive / mirror+file 统一换成官方 https archive
 rescue_sources() {
   FIXED=0
   each_src _fix_one
   if [ "$FIXED" -gt 0 ]; then
     echo "::warning::已将 ${FIXED} 个源文件换成 https://archive.ubuntu.com"
   else
-    echo "::warning::没有找到可替换的源（可能已经是官方 https）"
+    # 一个都没匹配上（常见于 prefer_https_sources 已经把它们改成 https，或者只有 mirror+file:）
+    # 别只打一行 warning 就硬装：整份重写一次，否则 update/install 必然是秒失败。
+    echo "::warning::没有匹配到可 sed 的源，整份重写所有源文件为 https://archive.ubuntu.com"
+    each_src _rewrite_sources
+    FIXED=1
   fi
   return 0
 }

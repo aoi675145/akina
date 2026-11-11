@@ -42,36 +42,44 @@ jobs:
 
       - name: 📦 修复 apt 源
         run: |
-          # 保留 runner 自带的 azure 镜像做首选（走 http，不碰 apt https 方法里
-          # 会卡死的 TLS select 路径），archive.ubuntu.com 做备用，apt 自动 failover。
-          # apt 超时是"单次 read"超时，慢速源会一直滴漏不触发，所以统一加 timeout 包裹。
-          sudo tee /etc/apt/sources.list.d/ubuntu.sources > /dev/null <<'EOF'
+          # 幂等修源：先清空所有源文件与旧索引，再写一份直连 https 源。
+          # 坑1：runner 镜像的 ubuntu.sources 指向 mirror+file:/etc/apt/apt-mirrors.txt，
+          #      只删 mirrorlist 不换源 → 每个 repo 秒报 "no longer has a Release file"，
+          #      45s/60s 的 timeout 包裹全成摆设（日志里连续三条 warning 各只花 1 秒）。
+          # 坑2：不清 /var/lib/apt/lists，apt 仍按上次记录的 mirror+file: 记账，
+          #      报错里出现的是旧源名，最容易误判成「新源没生效」。
+          . /etc/os-release
+          CODENAME="${VERSION_CODENAME:-noble}"
+          sudo rm -f /etc/apt/sources.list
+          sudo rm -f /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list
+          sudo tee /etc/apt/sources.list.d/ubuntu.sources > /dev/null <<EOF
           Types: deb
-          URIs: http://azure.archive.ubuntu.com/ubuntu/
-          Suites: noble noble-updates
+          URIs: https://archive.ubuntu.com/ubuntu/
+          Suites: ${CODENAME} ${CODENAME}-updates ${CODENAME}-backports
           Components: main restricted universe multiverse
           Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 
           Types: deb
-          URIs: http://archive.ubuntu.com/ubuntu/
-          Suites: noble noble-updates
-          Components: main restricted universe multiverse
-          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
-
-          Types: deb
-          URIs: http://security.ubuntu.com/ubuntu/
-          Suites: noble-security
+          URIs: https://security.ubuntu.com/ubuntu/
+          Suites: ${CODENAME}-security
           Components: main restricted universe multiverse
           Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
           EOF
           sudo rm -f /etc/apt/apt-mirrors.txt
-          # 与 runner-images 官方一致的超时/重试配置
           sudo tee /etc/apt/apt.conf.d/99-timeouts > /dev/null <<'EOF'
           Acquire::Retries "3";
           Acquire::http::Timeout "15";
           Acquire::https::Timeout "15";
           Acquire::http::Pipeline-Depth "0";
           EOF
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo apt-get clean
+          echo "=== 生效的源"
+          grep -hE '^(Types|URIs|Suites):' /etc/apt/sources.list.d/*.sources || true
+          echo "=== 生效的 acquire 配置"
+          apt-config dump Acquire::Retries Acquire::http::Timeout || true
+          timeout 90 sudo apt-get update -qq -o Acquire::ForceIPv4=true \
+            || echo "::warning::apt-get update 未完全成功，交后续 ensure-apt.sh 兜底"
 
       - name: 📦 安装 SeleniumBase 依赖与浏览器
         timeout-minutes: 10
