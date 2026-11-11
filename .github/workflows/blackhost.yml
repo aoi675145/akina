@@ -60,8 +60,17 @@ jobs:
           if [ -s /tmp/ensure-apt.sh ]; then
             bash /tmp/ensure-apt.sh \
               --need "Xvfb jq google-chrome" \
-              --pkgs "xvfb jq xdotool"
+              --pkgs "xvfb jq"
           fi
+          # apt 源不可达时的兜底：从本仓库 release 的 deb 资产解包（不碰 apt/DNS）
+          if ! command -v xdotool >/dev/null 2>&1; then
+            curl -fsSL --max-time 30 -o /tmp/ensure-deb.sh \
+              https://raw.githubusercontent.com/aoi675145/akina/main/.github/scripts/ensure-deb.sh \
+              && bash /tmp/ensure-deb.sh --need "xdotool" --pkgs "libxdo3 xdotool" \
+              || echo "::warning::ensure-deb.sh 兜底失败"
+          fi
+          command -v xdotool >/dev/null 2>&1 \
+            || { echo "::error::xdotool 仍未装上（apt 与 release deb 都失败）"; exit 1; }
           # 中文字体不走 apt：直接从本仓库 release 取 ttc（github.com 可达，绕开 apt 源/DNS）
           if ! fc-list 2>/dev/null | grep -qi wenquanyi; then
             sudo mkdir -p /usr/share/fonts/truetype/wqy

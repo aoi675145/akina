@@ -36,8 +36,6 @@ jobs:
 
       - name: 📦 安装底层依赖与浏览器
         run: |
-          sudo sed -i 's|URIs: mirror+file:/etc/apt/apt-mirrors.txt|URIs: https://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
-          sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g; s|https://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources
 
           # 系统包按需安装：ubuntu-24.04 镜像自带 xvfb/xauth/unzip/curl/wget/jq/Chrome，
           # 真缺才动 apt，源不可达快速放弃（逻辑见 .github/scripts/ensure-apt.sh）
@@ -45,8 +43,17 @@ jobs:
             https://raw.githubusercontent.com/aoi675145/akina/main/.github/scripts/ensure-apt.sh \
             || echo "::warning::ensure-apt.sh 拉取失败，依赖交给镜像自带"
           if [ -s /tmp/ensure-apt.sh ]; then
-            bash /tmp/ensure-apt.sh --need "Xvfb xauth xdotool" --pkgs "xvfb xauth xdotool"
+            bash /tmp/ensure-apt.sh --need "Xvfb xauth" --pkgs "xvfb xauth"
           fi
+          # apt 源不可达时的兜底：从本仓库 release 的 deb 资产解包（不碰 apt/DNS）
+          if ! command -v xdotool >/dev/null 2>&1; then
+            curl -fsSL --max-time 30 -o /tmp/ensure-deb.sh \
+              https://raw.githubusercontent.com/aoi675145/akina/main/.github/scripts/ensure-deb.sh \
+              && bash /tmp/ensure-deb.sh --need "xdotool" --pkgs "libxdo3 xdotool" \
+              || echo "::warning::ensure-deb.sh 兜底失败"
+          fi
+          command -v xdotool >/dev/null 2>&1 \
+            || { echo "::error::xdotool 仍未装上（apt 与 release deb 都失败）"; exit 1; }
            
           python -m pip install --upgrade pip
           pip install seleniumbase requests pyautogui python-xlib curl_cffi

@@ -61,8 +61,15 @@ jobs:
             https://raw.githubusercontent.com/aoi675145/akina/main/.github/scripts/ensure-apt.sh \
             || echo "::warning::ensure-apt.sh 拉取失败，依赖交给镜像自带"
           if [ -s /tmp/ensure-apt.sh ]; then
-            bash /tmp/ensure-apt.sh --need "Xvfb xauth xdotool unzip curl" \
-              --pkgs "xvfb xauth curl unzip xdotool"
+            bash /tmp/ensure-apt.sh --need "Xvfb xauth unzip curl" \
+              --pkgs "xvfb xauth curl unzip"
+          fi
+          # apt 源不可达时的兜底：从本仓库 release 的 deb 资产解包（不碰 apt/DNS）
+          if ! command -v xdotool >/dev/null 2>&1; then
+            curl -fsSL --max-time 30 -o /tmp/ensure-deb.sh \
+              https://raw.githubusercontent.com/aoi675145/akina/main/.github/scripts/ensure-deb.sh \
+              && bash /tmp/ensure-deb.sh --need "xdotool" --pkgs "libxdo3 xdotool" \
+              || echo "::warning::ensure-deb.sh 兜底失败"
           fi
           # Chrome：镜像自带（google-chrome 156.x），缺了才下 deb
           if ! command -v google-chrome >/dev/null 2>&1; then
