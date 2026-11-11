@@ -27,7 +27,8 @@ done
 
 [ -n "$(echo ${PKGS:-})" ] || { echo "::error::ensure-deb.sh 需要 --pkgs"; exit 2; }
 
-unpack() {  # $1=deb 路径  $2=目标根
+unpack() {  # $1=deb 路径  $2=目标根（必须先存在，dpkg-deb -x 不会自己建父目录）
+  mkdir -p "$2"
   if command -v dpkg-deb >/dev/null 2>&1; then
     dpkg-deb -x "$1" "$2"
   else
