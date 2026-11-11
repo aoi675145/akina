@@ -153,13 +153,13 @@ _rewrite_sources() {
     *.sources)
       sudo tee "$f" > /dev/null <<SRC
 Types: deb
-URIs: https://archive.ubuntu.com/ubuntu/
+URIs: http://azure.archive.ubuntu.com/ubuntu/
 Suites: ${cn} ${cn}-updates ${cn}-backports
 Components: main restricted universe multiverse
 Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 
 Types: deb
-URIs: https://security.ubuntu.com/ubuntu/
+URIs: http://azure.archive.ubuntu.com/ubuntu/
 Suites: ${cn}-security
 Components: main restricted universe multiverse
 Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
@@ -167,17 +167,17 @@ SRC
       ;;
     *)
       sudo tee "$f" > /dev/null <<SRC
-deb https://archive.ubuntu.com/ubuntu/ ${cn} main restricted universe multiverse
-deb https://archive.ubuntu.com/ubuntu/ ${cn}-updates main restricted universe multiverse
-deb https://archive.ubuntu.com/ubuntu/ ${cn}-backports main restricted universe multiverse
-deb https://security.ubuntu.com/ubuntu/ ${cn}-security main restricted universe multiverse
+deb http://azure.archive.ubuntu.com/ubuntu/ ${cn} main restricted universe multiverse
+deb http://azure.archive.ubuntu.com/ubuntu/ ${cn}-updates main restricted universe multiverse
+deb http://azure.archive.ubuntu.com/ubuntu/ ${cn}-backports main restricted universe multiverse
+deb http://azure.archive.ubuntu.com/ubuntu/ ${cn}-security main restricted universe multiverse
 SRC
       ;;
   esac
   # 源已改成直连，mirrorlist 才能安全删除；旧索引也必须清，否则 apt 仍按旧 repo 记账
   sudo rm -f /etc/apt/apt-mirrors.txt || true
   sudo rm -rf /var/lib/apt/lists/* || true
-  echo "[INFO] 已整份重写源文件: $f（${cn}, https://archive.ubuntu.com）"
+  echo "[INFO] 已整份重写源文件: $f（${cn}, http://azure.archive.ubuntu.com）"
 }
 
 # 把 azure / security / http archive / mirror+file 统一换成官方 https archive
@@ -185,11 +185,11 @@ rescue_sources() {
   FIXED=0
   each_src _fix_one
   if [ "$FIXED" -gt 0 ]; then
-    echo "::warning::已将 ${FIXED} 个源文件换成 https://archive.ubuntu.com"
+    echo "::warning::已将 ${FIXED} 个源文件换成 http://azure.archive.ubuntu.com"
   else
     # 一个都没匹配上（常见于 prefer_https_sources 已经把它们改成 https，或者只有 mirror+file:）
     # 别只打一行 warning 就硬装：整份重写一次，否则 update/install 必然是秒失败。
-    echo "::warning::没有匹配到可 sed 的源，整份重写所有源文件为 https://archive.ubuntu.com"
+    echo "::warning::没有匹配到可 sed 的源，整份重写所有源文件为 http://azure.archive.ubuntu.com（runner 上直连 archive 会 DNS 失败）"
     each_src _rewrite_sources
     FIXED=1
   fi
