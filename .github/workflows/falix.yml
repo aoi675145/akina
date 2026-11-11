@@ -47,7 +47,7 @@ jobs:
           echo "=== DNS 探测（失败只影响 apt，不阻断）"
           for h in azure.archive.ubuntu.com archive.ubuntu.com security.ubuntu.com; do
             printf '%s -> ' "$h"
-            getent hosts "$h" | head -1 || echo "解析失败"
+            timeout 3 getent hosts "$h" 2>/dev/null | head -1 || echo "解析失败"
           done
 
       - name: 📦 安装依赖
