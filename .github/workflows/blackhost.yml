@@ -1,11 +1,21 @@
 name: BlackHost 续期
 
 on:
-  workflow_dispatch:  # 只走外部触发，不配 cron
+  workflow_dispatch:  # 哪吒掉线告警打 dispatch
+  schedule:
+    # 每小时 :17 摸一次。续期是「重置成 续期时刻 +8h」、窗口只有到期前 2h，靠掉线告警触发
+    # 会先掉一段时间（2026-11-12 实测 17:13 到期、18:14 才跑，机器躺了一小时）。
+    # 没到窗口的二十几次由「窗口预检」5 秒跳过，不装依赖不起浏览器。
+    - cron: '17 * * * *'
 
 permissions:
   actions: write
   contents: write
+
+# 每小时一趟 + 告警触发容易撞车：同一时刻只跑一轮，后来的排队而不是并发开两个浏览器
+concurrency:
+  group: blackhost-renew
+  cancel-in-progress: false
 
 jobs:
   auto_renew_blackhost:
@@ -25,12 +35,26 @@ jobs:
             scripts/setup_proxy.sh
           sparse-checkout-cone-mode: false
 
+      - name: 🕒 窗口预检（窗口没开且进程在跑就整轮跳过）
+        id: gate
+        run: |
+          # 只查接口判状态，5 秒出结果；预检自己出问题一律 fail-open 走全流程
+          if curl -fsSL --max-time 30 -o /tmp/bh-gate.py \
+               https://raw.githubusercontent.com/aoi675145/akina/main/.github/scripts/blackhost-gate.py; then
+            python3 /tmp/bh-gate.py || { echo "::warning::预检脚本异常，按需走全流程"; echo "skip=0" >> "$GITHUB_OUTPUT"; }
+          else
+            echo "::warning::预检脚本拉取失败，按需走全流程"
+            echo "skip=0" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: 📦 安装 Python
+        if: steps.gate.outputs.skip != '1'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: 📦 修复 apt 源
+        if: steps.gate.outputs.skip != '1'
         run: |
           # 只加超时/重试参数，绝不动 runner 自带的 mirror+file 源。
           # 实测（2026-11-11 run 43038192535）：runner 上 https://archive.ubuntu.com
@@ -51,6 +75,7 @@ jobs:
           done
 
       - name: 📦 安装系统与 Python 依赖
+        if: steps.gate.outputs.skip != '1'
         timeout-minutes: 10
         run: |
           # google-chrome / xvfb / jq 镜像自带；xdotool 兜底点击 + 中文字体
@@ -88,6 +113,7 @@ jobs:
           pip install -q seleniumbase "requests[socks]" pyautogui --retries 5 --timeout 60
 
       - name: 🌐 设置代理 (sing-box)
+        if: steps.gate.outputs.skip != '1'
         env:
           BLACKHOST_PROXY: ${{ secrets.BLACKHOST_PROXY }}
         run: |
@@ -100,6 +126,7 @@ jobs:
 
       - name: 🚀 执行续期
         id: run_script
+        if: steps.gate.outputs.skip != '1'
         env:
           PYTHONIOENCODING: utf-8
           BLACKHOST: ${{ secrets.BLACKHOST }}
@@ -126,7 +153,7 @@ jobs:
           keep_minimum_runs: 3
 
       - name: ❌ 失败通知（前置步骤）
-        if: failure() && steps.run_script.conclusion != 'failure'
+        if: failure() && steps.gate.outputs.skip != '1' && steps.run_script.conclusion != 'failure'
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
