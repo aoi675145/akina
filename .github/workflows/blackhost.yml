@@ -1,18 +1,14 @@
 name: BlackHost 续期
 
 on:
-  workflow_dispatch:  # 哪吒掉线告警打 dispatch
-  schedule:
-    # 每小时 :17 摸一次。续期是「重置成 续期时刻 +8h」、窗口只有到期前 2h，靠掉线告警触发
-    # 会先掉一段时间（2026-11-12 实测 17:13 到期、18:14 才跑，机器躺了一小时）。
-    # 没到窗口的二十几次由「窗口预检」5 秒跳过，不装依赖不起浏览器。
-    - cron: '17 * * * *'
+  workflow_dispatch: 
+  #schedule:
+  #  - cron: '17 * * * *'
 
 permissions:
   actions: write
   contents: write
 
-# 每小时一趟 + 告警触发容易撞车：同一时刻只跑一轮，后来的排队而不是并发开两个浏览器
 concurrency:
   group: blackhost-renew
   cancel-in-progress: false
